@@ -651,10 +651,10 @@ body{font-family:'Nunito Sans',Segoe UI,sans-serif;background:#d4d8da;color:var(
         <label style="background:var(--blue);color:white;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:5px">
           🖼 Upload Screenshot <input type="file" accept="image/*" style="display:none" onchange="parseImage(this)" />
         </label>
-        <button onclick="event.stopPropagation();triggerClipboardPaste()" style="background:var(--teal,#448694);color:white;border:none;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer" id="paste-img-btn">⌘V Paste Image</button>
+        <button onclick="event.stopPropagation();triggerClipboardPaste()" style="background:var(--teal,#448694);color:white;border:none;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer" id="paste-img-btn">Paste Image</button>
         <button onclick="event.stopPropagation();togglePasteArea()" style="background:var(--off);color:var(--dark);border:1.5px solid #dde2e4;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer">📋 Paste Text</button>
       </div>
-      <div style="margin-top:6px;font-size:10px;color:#555;text-align:center;" id="paste-hint">Tip: Copy a screenshot then click <b>⌘V Paste Image</b> — or press <b>⌘V</b> anywhere in this modal</div>
+      <div style="margin-top:6px;font-size:10px;color:#555;text-align:center;" id="paste-hint">Tip: Copy a screenshot then click <b>Paste Image</b> — or paste anywhere in this modal</div>
       <textarea class="parser-paste" id="parser-paste" placeholder="Paste anything here — Meta lead details, a text from a client, forwarded email, notes... Claude will extract name, phone, email, loan type automatically." onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter')parseText()"></textarea>
       <div style="display:none;justify-content:flex-end;gap:6px;margin-top:6px" id="parser-btn-row">
         <button class="btn-s" onclick="event.stopPropagation();clearParser()" style="padding:5px 12px;font-size:11px">Clear</button>
@@ -837,6 +837,8 @@ let activeLoanType = 'purchase'
 let activeDest = 'prospects'
 let activeSources = []
 let fuMode = 'days'
+let visibleBoards = ['prospects','leads','closed','dead']  // per-team, loaded from Supabase
+let adminModeActive = false  // temporary admin elevation via PIN
 let activeOffice = '' // 'bmb' | 'emb' — required, no default
 let cfuMode = 'days'
 let isEditing = false
@@ -875,6 +877,112 @@ async function loadColumnLabels() {
       console.log('Column labels loaded from DB ✓', Object.keys(COL_LABELS).length, 'labels')
     }
   } catch (e) { console.error('Error loading column labels:', e) }
+}
+
+// ═══════════════════════════════════════════
+//  BOARD VISIBILITY (per-team, from Supabase)
+// ═══════════════════════════════════════════
+function isBoardVisible(boardName) {
+  return visibleBoards.includes(boardName)
+}
+
+async function loadBoardVisibility() {
+  if (!supabase || !currentUser?.team) return
+  try {
+    const key = 'boards_visible_' + currentUser.team
+    const { data, error } = await supabase.from('app_settings').select('value').eq('key', key).maybeSingle()
+    if (error) { console.error('Failed to load board visibility:', error); return }
+    if (data && data.value) {
+      try {
+        const parsed = JSON.parse(data.value)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          visibleBoards = parsed
+          console.log('Board visibility loaded for team', currentUser.team, ':', visibleBoards)
+        }
+      } catch(e) { console.error('Invalid board visibility JSON:', e) }
+    }
+    // If no row exists, keep default (all 4 boards visible)
+  } catch(e) { console.error('Error loading board visibility:', e) }
+}
+
+function renderSidebar() {
+  const boards = [
+    { id: 'leads', navId: 'nav-leads', icon: '⚡', label: 'Leads', badgeId: 'badge-leads', badgeClass: 'b' },
+    { id: 'prospects', navId: 'nav-prospects', icon: '🏠', label: 'Prospects', badgeId: 'badge-prospects', badgeClass: 'r' },
+    { id: 'closed', navId: 'nav-closed', icon: '✅', label: 'Closed Loans' },
+    { id: 'dead', navId: 'nav-dead', icon: '💀', label: 'Dead Files' }
+  ]
+  const myNav = document.getElementById('sb-my-nav')
+  const teamNav = document.getElementById('sb-team-nav')
+  if (!myNav) return
+
+  // Rebuild "My Team" nav
+  const visItems = boards.filter(b => isBoardVisible(b.id))
+  myNav.innerHTML = '<div class="sb-sec">BOARDS</div>' + visItems.map((b, i) =>
+    `<div class="sb-item${i===0?' on':''}" onclick="goBoard('${b.id}',this)" id="${b.navId}"><span class="si">${b.icon}</span><span class="sl">${b.label}</span>${b.badgeId ? `<span class="sb-num ${b.badgeClass}" id="${b.badgeId}">0</span>` : ''}</div>`
+  ).join('')
+
+  // Rebuild "Other Teams" board list (inside sb-team-nav)
+  if (teamNav) {
+    const teamPick = teamNav.querySelector('.sb-team-pick')
+    const pickHtml = teamPick ? teamPick.outerHTML : ''
+    teamNav.innerHTML = pickHtml + '<div class="sb-sec">THEIR BOARDS</div>' + visItems.map((b, i) =>
+      `<div class="sb-item${i===0?' on':''}" onclick="goBoard('${b.id}',this)"><span class="si">${b.icon}</span><span class="sl">${b.label}</span></div>`
+    ).join('')
+  }
+
+  // If current board is hidden, switch to first visible
+  if (!isBoardVisible(currentBoard) && visItems.length > 0) {
+    goBoard(visItems[0].id, document.getElementById(visItems[0].navId))
+  }
+}
+
+// ═══════════════════════════════════════════
+//  ADMIN PIN
+// ═══════════════════════════════════════════
+function showAdminPinModal() {
+  if (currentUser?.role === 'admin' || adminModeActive) {
+    renderAdminPanel()
+    return
+  }
+  const html = `<div style="padding:24px;text-align:center">
+    <div style="font-size:13px;font-weight:700;color:var(--dark);margin-bottom:14px">Enter Admin PIN</div>
+    <input type="password" id="admin-pin-input" maxlength="10" placeholder="PIN" style="width:140px;text-align:center;border:1.5px solid #e0e4e6;border-radius:8px;padding:10px;font-family:inherit;font-size:16px;font-weight:900;letter-spacing:4px;outline:none" onkeydown="if(event.key==='Enter')verifyAdminPin()" />
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:16px">
+      <button class="btn-s" onclick="closeModal('modal-admin-pin')">Cancel</button>
+      <button class="btn-p" onclick="verifyAdminPin()">Unlock</button>
+    </div>
+    <div id="admin-pin-error" style="margin-top:10px;font-size:11px;color:var(--red);font-weight:700;display:none">Incorrect PIN</div>
+  </div>`
+  showSimpleModal('🔒 ADMIN ACCESS', html, 'modal-admin-pin')
+  setTimeout(() => document.getElementById('admin-pin-input')?.focus(), 100)
+}
+
+async function verifyAdminPin() {
+  const input = document.getElementById('admin-pin-input')?.value?.trim()
+  if (!input) return
+  // Load PIN from Supabase
+  let correctPin = '8702' // fallback default
+  if (supabase) {
+    try {
+      const { data } = await supabase.from('app_settings').select('value').eq('key', 'admin_pin').maybeSingle()
+      if (data?.value) correctPin = data.value
+    } catch(e) { console.error('Error loading admin PIN:', e) }
+  }
+  if (input === correctPin) {
+    adminModeActive = true
+    currentUser.role = 'admin'
+    updateNavUser()
+    renderSidebar()
+    closeModal('modal-admin-pin')
+    showToast('Admin mode activated', 'green')
+    renderAdminPanel()
+  } else {
+    const err = document.getElementById('admin-pin-error')
+    if (err) err.style.display = 'block'
+    document.getElementById('admin-pin-input').value = ''
+    document.getElementById('admin-pin-input')?.focus()
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -920,23 +1028,20 @@ async function init() {
       })
     }
 
-    // Fix paste button labels for Windows (Ctrl+V instead of ⌘V)
-    const isMac = window.electronAPI?.platform === 'darwin'
-    if (!isMac) {
-      const pasteBtn = document.getElementById('paste-img-btn')
-      if (pasteBtn) pasteBtn.textContent = 'Ctrl+V Paste Image'
-      const pasteHint = document.getElementById('paste-hint')
-      if (pasteHint) pasteHint.innerHTML = 'Tip: Copy a screenshot then click <b>Ctrl+V Paste Image</b> — or press <b>Ctrl+V</b> anywhere in this modal'
-    }
 
     // Load column labels from DB before rendering
     await loadColumnLabels()
 
+    // Load per-team board visibility from Supabase
+    await loadBoardVisibility()
+    renderSidebar()
+
     // Show app immediately — don't wait for data
     document.getElementById('loading').classList.add('hidden')
 
-    // Set initial board to leads
-    goBoard('leads', document.getElementById('nav-leads'))
+    // Set initial board to first visible board
+    const defaultBoard = isBoardVisible('leads') ? 'leads' : visibleBoards[0] || 'leads'
+    goBoard(defaultBoard, document.getElementById('nav-' + defaultBoard))
 
     // Load data in background
     loadContacts()
@@ -1188,9 +1293,11 @@ function renderAllBoards() {
         <button class="btn-sm btn-edit-sm" onclick="event.stopPropagation();openCard('${c.id}')">View</button>
       </div>`).join('')
 
-  // Update badges
-  document.getElementById('badge-prospects').textContent = contacts.filter(c=>c.board==='prospects').length
-  document.getElementById('badge-leads').textContent = contacts.filter(c=>c.board==='leads').length
+  // Update badges (may not exist if board is hidden)
+  const badgeP = document.getElementById('badge-prospects')
+  const badgeL = document.getElementById('badge-leads')
+  if (badgeP) badgeP.textContent = contacts.filter(c=>c.board==='prospects').length
+  if (badgeL) badgeL.textContent = contacts.filter(c=>c.board==='leads').length
 }
 
 function renderCard(c, isInProcess) {
@@ -1269,8 +1376,8 @@ function renderCard(c, isInProcess) {
   <div class="card-btns">
     <button class="btn-sm btn-log-sm" onclick="event.stopPropagation();openContactLog('${c.id}')">✓ Log Contact</button>
     <button class="btn-sm btn-move-sm" onclick="event.stopPropagation();openMoveCard('${c.id}')">Move →</button>
-    ${isProspect ? `<button class="btn-sm btn-leads-sm" onclick="event.stopPropagation();moveToLeads('${c.id}')">→ Leads</button>` : ''}
-    ${isDead ? `<button class="btn-sm btn-leads-sm" onclick="event.stopPropagation();restoreContact('${c.id}')">↩ Restore</button>` : ''}
+    ${isProspect && isBoardVisible('leads') ? `<button class="btn-sm btn-leads-sm" onclick="event.stopPropagation();moveToLeads('${c.id}')">→ Leads</button>` : ''}
+    ${isDead && isBoardVisible('prospects') ? `<button class="btn-sm btn-leads-sm" onclick="event.stopPropagation();restoreContact('${c.id}')">↩ Restore</button>` : ''}
     ${c.email ? `<button class="btn-sm" style="background:linear-gradient(135deg,#ea4335,#c5221f);color:white;font-size:10px;font-weight:900;padding:4px 9px;border-radius:6px;border:none;cursor:pointer;" onclick="event.stopPropagation();openCard('${c.id}')">📧 Email</button>` : ''}
   </div>
 </div>`
@@ -1509,6 +1616,10 @@ function openCard(id) {
         </div>
       </div>
     </div>`
+
+  // Hide Mark Dead button if dead board is not visible
+  const deadBtn = document.getElementById('btn-mark-dead')
+  if (deadBtn) deadBtn.style.display = isBoardVisible('dead') ? '' : 'none'
 
   openModal('modal-card')
   // Load Unite SMS thread inline
@@ -2031,6 +2142,7 @@ async function saveNewProspect() {
 //  MOVE CONTACT
 // ═══════════════════════════════════════════
 async function moveToLeads(id) {
+  if (!isBoardVisible('leads')) { showToast('Leads board is not enabled for this team', 'red'); return }
   await updateContact(id, { board: 'leads', column_id: 'lead_prospect', updated_at: new Date().toISOString() })
   showToast('Moved to Leads ✓', 'green')
   await loadContacts()
@@ -2041,7 +2153,7 @@ function openMoveCard(id) {
   if (!c) return
   const colIds = ['col_faas','col_gen1','col_gen2','col_gen3','col_gen4','col_meta',
     'lead_prospect','lead_docs','lead_ready','lead_approved','lead_inprocess',
-    'dead_prospect','dead_denied']
+    'dead_prospect','dead_denied'].filter(cid => isBoardVisible(COL_BOARD[cid]))
   const allCols = colIds.map(id => ({ id, label: COL_LABELS[id] || id }))
   const name = `${c.first_name||''} ${c.last_name||''}`.trim()
   const opts = allCols.map(col => `<option value="${col.id}" ${col.id===c.column_id?'selected':''}>${col.label}</option>`).join('')
@@ -2060,6 +2172,7 @@ async function confirmMove(id) {
 }
 
 async function restoreContact(id) {
+  if (!isBoardVisible('prospects')) { showToast('Prospects board is not enabled for this team', 'red'); return }
   await updateContact(id, { board: 'prospects', column_id: 'col_gen1', updated_at: new Date().toISOString() })
   showToast('Contact restored ✓', 'green')
   await loadContacts()
@@ -2067,6 +2180,7 @@ async function restoreContact(id) {
 
 async function markContactDead() {
   if (!activeContactId) return
+  if (!isBoardVisible('dead')) { showToast('Dead Files board is not enabled for this team', 'red'); return }
   const c = contacts.find(x=>x.id===activeContactId)
   const isDenied = c?.board === 'leads'
   await updateContact(activeContactId, {
@@ -3227,6 +3341,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'))
   if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); openNewProspect() }
   if ((e.metaKey || e.ctrlKey) && e.key === 'r') { e.preventDefault(); refreshData() }
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) { e.preventDefault(); showAdminPinModal() }
 })
 
 // ═══════════════════════════════════════════

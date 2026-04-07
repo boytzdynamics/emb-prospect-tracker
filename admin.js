@@ -9,7 +9,7 @@ function renderAdminPanel() {
   showSimpleModal('⚙️ ADMIN SETTINGS', `
     <div style="padding:0">
       <div style="display:flex;border-bottom:1px solid #eaeef0;background:#f8f9fa;border-radius:8px 8px 0 0;overflow:hidden">
-        ${['Profile','Teams','Users','Columns','Integrations','Gmail','Import','Defaults'].map((tab,i) =>
+        ${['Profile','Teams','Users','Columns','Boards','Integrations','Gmail','Import','Defaults'].map((tab,i) =>
           `<button onclick="adminTab(${i})" id="atab-${i}" style="flex:1;padding:10px 4px;border:none;background:${i===0?'white':'transparent'};font-family:inherit;font-size:10px;font-weight:900;color:${i===0?'var(--dark)':'#aaa'};cursor:pointer;border-bottom:2px solid ${i===0?'var(--blue)':'transparent'};transition:all .2s">${tab}</button>`
         ).join('')}
       </div>
@@ -53,8 +53,35 @@ function renderAdminPanel() {
         <button class="btn-p" onclick="saveColumnLabels()" style="margin-top:14px">Save Labels</button>
       </div>
 
-      <!-- 4: Integrations (Supabase, Claude, Unite) -->
+      <!-- 4: Boards (per-team visibility) -->
       <div id="apanel-4" style="padding:20px;display:none">
+        <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px">BOARD VISIBILITY PER TEAM</div>
+        <div style="font-size:11px;color:#888;margin-bottom:12px">Choose which boards each team can see. Hidden boards block all moves to those boards.</div>
+        <div class="frow" style="margin-bottom:14px">
+          <div class="ff">
+            <label>Team</label>
+            <select id="a-board-team" onchange="loadBoardVisibilityAdmin()" style="border:1.5px solid #e0e4e6;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:13px;font-weight:700;background:var(--off);outline:none">
+              <option value="matt">Team Matt</option>
+              <option value="shad">Team Shad</option>
+              <option value="lauren">Team Lauren</option>
+            </select>
+          </div>
+        </div>
+        <div id="board-vis-checks" style="display:flex;flex-direction:column;gap:10px"></div>
+        <button class="btn-p" onclick="saveBoardVisibility()" style="margin-top:14px">Save Board Visibility</button>
+        <div style="margin-top:24px;border-top:1px solid #eaeef0;padding-top:16px">
+          <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">ADMIN PIN</div>
+          <div style="font-size:11px;color:#888;margin-bottom:10px">Used to access admin settings on any machine via Ctrl+Shift+A</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="a-admin-pin" type="text" placeholder="PIN code" style="width:140px;border:1.5px solid #e0e4e6;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:14px;font-weight:900;letter-spacing:3px;text-align:center;background:var(--off);outline:none" />
+            <button class="btn-p" onclick="saveAdminPin()">Save PIN</button>
+          </div>
+          <div id="admin-pin-status" style="margin-top:6px;font-size:11px;color:#888"></div>
+        </div>
+      </div>
+
+      <!-- 5: Integrations (Supabase, Claude, Unite) -->
+      <div id="apanel-5" style="padding:20px;display:none">
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">SUPABASE</div>
         <div class="frow"><div class="ff"><label>Supabase URL</label><input id="a-sb-url" value="${cfg.supabase_url||''}" /></div></div>
         <div class="frow"><div class="ff"><label>Supabase Anon Key</label><input id="a-sb-key" value="${cfg.supabase_anon_key||''}" type="password" /></div></div>
@@ -72,8 +99,8 @@ function renderAdminPanel() {
         <button class="btn-p" onclick="saveIntegrations()" style="margin-top:14px">Save Integrations</button>
       </div>
 
-      <!-- 5: Gmail (App Passwords — Admin only) -->
-      <div id="apanel-5" style="padding:20px;display:none">
+      <!-- 6: Gmail (App Passwords — Admin only) -->
+      <div id="apanel-6" style="padding:20px;display:none">
         <div style="background:#eef5fc;border:1.5px solid var(--blue);border-radius:9px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--dark);line-height:1.7">
           <strong>📧 Gmail App Password Setup</strong><br>
           Matt's PC scrapes all 4 accounts automatically. One-time setup per account.<br><br>
@@ -99,8 +126,8 @@ function renderAdminPanel() {
         <div id="gmail-test-results" style="margin-top:10px"></div>
       </div>
 
-      <!-- 6: Import -->
-      <div id="apanel-6" style="padding:20px;display:none">
+      <!-- 7: Import -->
+      <div id="apanel-7" style="padding:20px;display:none">
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">CSV MASS IMPORT</div>
         <div style="background:var(--off);border:2px dashed #dde2e4;border-radius:12px;padding:24px;text-align:center;margin-bottom:14px">
           <div style="font-size:32px;margin-bottom:8px">📄</div>
@@ -124,8 +151,8 @@ function renderAdminPanel() {
         </div>
       </div>
 
-      <!-- 7: Defaults -->
-      <div id="apanel-7" style="padding:20px;display:none">
+      <!-- 8: Defaults -->
+      <div id="apanel-8" style="padding:20px;display:none">
         <div class="frow">
           <div class="ff">
             <label>Default Follow-Up Days</label>
@@ -147,6 +174,8 @@ function renderAdminPanel() {
   renderColLabels()
   renderTeamsList()
   renderUsersList()
+  loadBoardVisibilityAdmin()
+  loadAdminPinForPanel()
 }
 
 // Gmail account row helper
@@ -169,7 +198,7 @@ function gmailAccountRow(label, email, inputId, currentVal) {
 }
 
 function adminTab(i) {
-  for(let j=0;j<8;j++){
+  for(let j=0;j<9;j++){
     const tab = document.getElementById('atab-'+j)
     const panel = document.getElementById('apanel-'+j)
     if(tab){tab.style.background=j===i?'white':'transparent';tab.style.color=j===i?'var(--dark)':'#aaa';tab.style.borderBottomColor=j===i?'var(--blue)':'transparent'}
@@ -432,4 +461,103 @@ async function importSettings(input) {
     showToast('Settings imported — restarting...', 'green')
     setTimeout(() => location.reload(), 1500)
   } catch(e) { showToast('Invalid settings file', 'red') }
+}
+
+// ═══════════════════════════════════════════
+//  BOARD VISIBILITY (Admin Panel)
+// ═══════════════════════════════════════════
+const ALL_BOARDS = [
+  { id: 'prospects', label: 'Prospects', icon: '🏠' },
+  { id: 'leads', label: 'Leads', icon: '⚡' },
+  { id: 'closed', label: 'Closed Loans', icon: '✅' },
+  { id: 'dead', label: 'Dead Files', icon: '💀' }
+]
+
+async function loadBoardVisibilityAdmin() {
+  const team = document.getElementById('a-board-team')?.value || 'matt'
+  const el = document.getElementById('board-vis-checks')
+  if (!el) return
+
+  // Default: all boards visible
+  let visible = ['prospects','leads','closed','dead']
+  if (supabase) {
+    try {
+      const { data } = await supabase.from('app_settings').select('value').eq('key', 'boards_visible_' + team).maybeSingle()
+      if (data?.value) {
+        try { const parsed = JSON.parse(data.value); if (Array.isArray(parsed) && parsed.length > 0) visible = parsed } catch(e) {}
+      }
+    } catch(e) { console.error('Error loading board visibility for admin:', e) }
+  }
+
+  el.innerHTML = ALL_BOARDS.map(b => `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--off);border-radius:9px;padding:10px 14px">
+      <input type="checkbox" id="bv-${b.id}" ${visible.includes(b.id)?'checked':''} style="width:18px;height:18px;accent-color:var(--blue)" />
+      <label for="bv-${b.id}" style="font-size:13px;font-weight:900;color:var(--dark);cursor:pointer">${b.icon} ${b.label}</label>
+    </div>`).join('')
+}
+
+async function saveBoardVisibility() {
+  const team = document.getElementById('a-board-team')?.value || 'matt'
+  const visible = ALL_BOARDS.filter(b => document.getElementById('bv-' + b.id)?.checked).map(b => b.id)
+  if (visible.length === 0) { showToast('At least one board must be visible', 'red'); return }
+  if (!supabase) { showToast('Supabase not connected', 'red'); return }
+  try {
+    const key = 'boards_visible_' + team
+    const payload = { key, value: JSON.stringify(visible), updated_by: currentUser?.name || 'Admin', updated_at: new Date().toISOString() }
+    // Check if row exists, then update or insert
+    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', key).maybeSingle()
+    let error
+    if (existing) {
+      ({ error } = await supabase.from('app_settings').update(payload).eq('key', key))
+    } else {
+      ({ error } = await supabase.from('app_settings').insert(payload))
+    }
+    if (error) { showToast('Failed to save: ' + error.message, 'red'); return }
+    showToast('Board visibility saved for Team ' + team.charAt(0).toUpperCase() + team.slice(1), 'green')
+    // If saving for current user's team, update live state
+    if (team === currentUser?.team) {
+      visibleBoards = visible
+      renderSidebar()
+      renderAllBoards()
+    }
+  } catch(e) { showToast('Error saving board visibility', 'red') }
+}
+
+// ═══════════════════════════════════════════
+//  ADMIN PIN MANAGEMENT
+// ═══════════════════════════════════════════
+async function loadAdminPinForPanel() {
+  const input = document.getElementById('a-admin-pin')
+  const status = document.getElementById('admin-pin-status')
+  if (!input || !supabase) return
+  try {
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'admin_pin').maybeSingle()
+    if (data?.value) {
+      input.value = data.value
+      if (status) status.textContent = 'Current PIN loaded from database'
+    } else {
+      input.value = '8702'
+      if (status) status.textContent = 'Using default PIN (8702) — no PIN saved in database yet'
+    }
+  } catch(e) { console.error('Error loading admin PIN:', e) }
+}
+
+async function saveAdminPin() {
+  const pin = document.getElementById('a-admin-pin')?.value?.trim()
+  if (!pin || pin.length < 4) { showToast('PIN must be at least 4 characters', 'red'); return }
+  if (!supabase) { showToast('Supabase not connected', 'red'); return }
+  try {
+    const payload = { key: 'admin_pin', value: pin, updated_by: currentUser?.name || 'Admin', updated_at: new Date().toISOString() }
+    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', 'admin_pin').maybeSingle()
+    let error
+    if (existing) {
+      ({ error } = await supabase.from('app_settings').update(payload).eq('key', 'admin_pin'))
+    } else {
+      ({ error } = await supabase.from('app_settings').insert(payload))
+    }
+    if (error) { showToast('Failed to save PIN: ' + error.message, 'red'); return }
+    showToast('Admin PIN saved', 'green')
+    const status = document.getElementById('admin-pin-status')
+    if (status) status.textContent = 'PIN saved successfully'
+  } catch(e) { showToast('Error saving PIN', 'red') }
 }

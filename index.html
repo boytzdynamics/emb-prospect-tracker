@@ -951,6 +951,9 @@ function renderSidebar() {
     teamNav.innerHTML = pickHtml + '<div class="sb-sec">THEIR BOARDS</div>' + visItems.map((b, i) =>
       `<div class="sb-item${i===0?' on':''}" onclick="goBoard('${b.id}',this)"><span class="si">${b.icon}</span><span class="sl">${b.label}</span></div>`
     ).join('')
+    // Restore dropdown selection after rebuild (outerHTML loses selected state)
+    const sel = teamNav.querySelector('#team-select')
+    if (sel && viewingTeam) sel.value = viewingTeam
   }
 
   // If current board is hidden, switch to first visible

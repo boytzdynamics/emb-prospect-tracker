@@ -839,6 +839,7 @@ let activeSources = []
 let fuMode = 'days'
 let visibleBoards = ['prospects','leads','closed','dead']  // per-team, loaded from Supabase
 let adminModeActive = false  // temporary admin elevation via PIN
+let unitePhones = []  // [{phone, initials, name}] — loaded from Supabase app_settings
 let activeOffice = '' // 'bmb' | 'emb' — required, no default
 let cfuMode = 'days'
 let isEditing = false
@@ -877,6 +878,29 @@ async function loadColumnLabels() {
       console.log('Column labels loaded from DB ✓', Object.keys(COL_LABELS).length, 'labels')
     }
   } catch (e) { console.error('Error loading column labels:', e) }
+}
+
+// ═══════════════════════════════════════════
+//  UNITE PHONE NUMBERS (multi-LO)
+// ═══════════════════════════════════════════
+async function loadUnitePhones() {
+  if (!supabase) return
+  try {
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'unite_phones').maybeSingle()
+    if (data?.value) {
+      try {
+        const parsed = JSON.parse(data.value)
+        if (Array.isArray(parsed)) { unitePhones = parsed; console.log('Unite phones loaded:', unitePhones.length, 'numbers') }
+      } catch(e) { console.error('Invalid unite_phones JSON:', e) }
+    }
+  } catch(e) { console.error('Error loading unite phones:', e) }
+}
+
+function getLoInitials(phone) {
+  if (!phone || unitePhones.length === 0) return null
+  const norm = phone.replace(/\D/g, '').slice(-10)
+  const match = unitePhones.find(p => (p.phone || '').replace(/\D/g, '').slice(-10) === norm)
+  return match ? match.initials : null
 }
 
 // ═══════════════════════════════════════════
@@ -1031,6 +1055,9 @@ async function init() {
 
     // Load column labels from DB before rendering
     await loadColumnLabels()
+
+    // Load Unite phone numbers for multi-LO display
+    await loadUnitePhones()
 
     // Load per-team board visibility from Supabase
     await loadBoardVisibility()
@@ -2784,13 +2811,18 @@ async function loadUniteInlineThread(contactId) {
           ? '<div style="text-align:center;color:#555;font-size:11px;padding:10px;line-height:1.5">No messages yet.<br>Messages sync every 5 min after you send from Unite.</div>'
           : '<div style="text-align:center;color:#555;font-size:11px;padding:10px;line-height:1.5">Unite not configured.<br>Add credentials in Admin → Integrations.</div>'
       } else {
-        threadEl.innerHTML = msgs.map(m=>`
-          <div style="display:flex;justify-content:${m.direction==='out'?'flex-end':'flex-start'};margin-bottom:6px">
-            <div style="max-width:75%;padding:7px 10px;border-radius:${m.direction==='out'?'10px 10px 3px 10px':'10px 10px 10px 3px'};background:${m.direction==='out'?'linear-gradient(135deg,var(--blue),var(--teal))':'white'};color:${m.direction==='out'?'white':'var(--dark)'};font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+        threadEl.innerHTML = msgs.map(m=>{
+          const isOut = m.direction==='out'
+          const loInit = getLoInitials(m.account_phone)
+          const initBadge = loInit ? `<div style="width:22px;height:22px;border-radius:50%;background:var(--blue);color:white;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="${escHtml(m.account_phone||'')}">${escHtml(loInit)}</div>` : ''
+          return `<div style="display:flex;align-items:flex-end;justify-content:${isOut?'flex-end':'flex-start'};gap:4px;margin-bottom:6px">
+            ${!isOut ? initBadge : ''}
+            <div style="max-width:70%;padding:7px 10px;border-radius:${isOut?'10px 10px 3px 10px':'10px 10px 10px 3px'};background:${isOut?'linear-gradient(135deg,var(--blue),var(--teal))':'white'};color:${isOut?'white':'var(--dark)'};font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
               ${escHtml(m.text||'')}
-              <div style="font-size:9px;opacity:.6;margin-top:2px;text-align:${m.direction==='out'?'right':'left'}">${new Date(m.timestamp).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+              <div style="font-size:9px;opacity:.6;margin-top:2px;text-align:${isOut?'right':'left'}">${new Date(m.timestamp).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
             </div>
-          </div>`).join('')
+            ${isOut ? initBadge : ''}
+          </div>`}).join('')
         threadEl.scrollTop = threadEl.scrollHeight
       }
     } else {
@@ -2892,7 +2924,8 @@ async function pollUniteMessages() {
       console.log('Unite poll: 0 records returned. Full response:', JSON.stringify(data).substring(0, 500))
       return
     }
-    // Log first record shape so we know the field names
+    // Log first record shape so we know the field names (including local/LO number)
+    console.log('Unite poll: first record keys:', Object.keys(records[0]).join(', '))
     console.log('Unite poll: first record shape:', JSON.stringify(records[0]))
     
     // Pre-fetch already-logged SMS IDs from contact_log (note field = 'sms:{id}')
@@ -2919,6 +2952,11 @@ async function pollUniteMessages() {
       if (!msgId) continue
 
       const isInbound = (record.direction || '') === 'in' || record.isInbound === true
+      // Try to extract the LO/account phone number from various possible API fields
+      const accountPhone = record.userPhoneNumber || record.localNumber || record.userNumber
+        || record.accountPhoneNumber || record.owner_phone || record.line
+        || (isInbound ? (record.to || record.toNumber || record.destinationNumber) : (record.from || record.fromNumber || record.sourceNumber))
+        || ''
       const msg = {
         id: String(msgId),
         contact_id: contact.id,
@@ -2927,7 +2965,8 @@ async function pollUniteMessages() {
         text: record.text || record.body || record.message || '',
         timestamp: record.dateTime || record.timestamp || record.sentAt || new Date().toISOString(),
         subtype: record.subtype || 'sms',
-        team: currentUser?.team || 'matt'
+        team: currentUser?.team || 'matt',
+        account_phone: accountPhone || null
       }
 
       const { error } = await supabase

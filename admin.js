@@ -89,7 +89,11 @@ function renderAdminPanel() {
         <div class="frow"><div class="ff"><label>Claude API Key</label><input id="a-claude" value="${cfg.claude_api_key||''}" type="password" /></div></div>
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">INTERMEDIA UNITE SMS</div>
         <div class="frow"><div class="ff"><label>Client ID</label><input id="a-unite-id" value="${cfg.unite_client_id||''}" /></div><div class="ff"><label>Client Secret</label><input id="a-unite-secret" value="${cfg.unite_client_secret||''}" type="password" /></div></div>
-        <div class="frow"><div class="ff"><label>Shared Phone Number</label><input id="a-unite-phone" value="${cfg.unite_phone_number||''}" placeholder="+15415551234" /></div></div>
+        <div class="frow"><div class="ff"><label>Shared Phone Number (legacy)</label><input id="a-unite-phone" value="${cfg.unite_phone_number||''}" placeholder="+15415551234" /></div></div>
+        <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">LO PHONE NUMBERS</div>
+        <div style="font-size:11px;color:#888;margin-bottom:10px">Add each LO's phone number with their initials. Initials show next to texts in the thread view.</div>
+        <div id="unite-phones-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+        <button class="btn-s" onclick="addUnitePhone()" style="font-size:10px">+ Add Phone Number</button>
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">META LEAD WEBHOOK</div>
         <div style="background:var(--off);border:1.5px solid #e0e4e6;border-radius:9px;padding:12px;font-size:12px;color:var(--dark)">
           Point your Meta Lead Ad webhook to:<br>
@@ -176,6 +180,7 @@ function renderAdminPanel() {
   renderUsersList()
   loadBoardVisibilityAdmin()
   loadAdminPinForPanel()
+  loadUnitePhonesAdmin()
 }
 
 // Gmail account row helper
@@ -362,7 +367,7 @@ function saveAdminProfile() {
   showToast('Profile saved', 'green')
 }
 
-function saveIntegrations() {
+async function saveIntegrations() {
   const cfg = loadConfig()||{}
   cfg.supabase_url        = document.getElementById('a-sb-url')?.value
   cfg.supabase_anon_key   = document.getElementById('a-sb-key')?.value
@@ -371,6 +376,22 @@ function saveIntegrations() {
   cfg.unite_client_secret = document.getElementById('a-unite-secret')?.value
   cfg.unite_phone_number  = document.getElementById('a-unite-phone')?.value
   saveConfig(cfg)
+
+  // Save Unite phone numbers to Supabase
+  if (supabase) {
+    const phones = collectUnitePhones()
+    try {
+      const payload = { key: 'unite_phones', value: JSON.stringify(phones), updated_by: currentUser?.name || 'Admin', updated_at: new Date().toISOString() }
+      const { data: existing } = await supabase.from('app_settings').select('id').eq('key', 'unite_phones').maybeSingle()
+      if (existing) {
+        await supabase.from('app_settings').update(payload).eq('key', 'unite_phones')
+      } else {
+        await supabase.from('app_settings').insert(payload)
+      }
+      unitePhones = phones
+    } catch(e) { console.error('Error saving unite phones:', e) }
+  }
+
   showToast('Integrations saved — restart for full effect', 'blue')
 }
 
@@ -561,3 +582,65 @@ async function saveAdminPin() {
     if (status) status.textContent = 'PIN saved successfully'
   } catch(e) { showToast('Error saving PIN', 'red') }
 }
+
+// ═══════════════════════════════════════════
+//  UNITE PHONE NUMBERS (Multi-LO)
+// ═══════════════════════════════════════════
+let _adminUnitePhones = []
+
+async function loadUnitePhonesAdmin() {
+  const el = document.getElementById('unite-phones-list')
+  if (!el || !supabase) return
+  try {
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'unite_phones').maybeSingle()
+    if (data?.value) {
+      try { _adminUnitePhones = JSON.parse(data.value) } catch(e) { _adminUnitePhones = [] }
+    } else {
+      // Seed from legacy single phone if exists
+      const cfg = loadConfig() || {}
+      if (cfg.unite_phone_number) {
+        _adminUnitePhones = [{ phone: cfg.unite_phone_number, initials: currentUser?.initials || '', name: currentUser?.name || '' }]
+      } else {
+        _adminUnitePhones = []
+      }
+    }
+  } catch(e) { _adminUnitePhones = [] }
+  renderUnitePhonesAdmin()
+}
+
+function renderUnitePhonesAdmin() {
+  const el = document.getElementById('unite-phones-list')
+  if (!el) return
+  if (_adminUnitePhones.length === 0) {
+    el.innerHTML = '<div style="color:#ccc;font-size:12px;font-weight:700">No phone numbers configured yet</div>'
+    return
+  }
+  el.innerHTML = _adminUnitePhones.map((p, i) => `
+    <div style="display:flex;gap:8px;align-items:center;background:var(--off);border-radius:9px;padding:10px 12px">
+      <input id="up-phone-${i}" value="${p.phone||''}" placeholder="+15415551234" style="flex:2;border:1.5px solid #e0e4e6;border-radius:7px;padding:6px 10px;font-family:inherit;font-size:12px;background:white;outline:none" />
+      <input id="up-initials-${i}" value="${p.initials||''}" placeholder="LB" maxlength="3" style="width:50px;text-align:center;border:1.5px solid #e0e4e6;border-radius:7px;padding:6px;font-family:inherit;font-size:12px;font-weight:900;background:white;outline:none;text-transform:uppercase" />
+      <input id="up-name-${i}" value="${p.name||''}" placeholder="Name" style="flex:1;border:1.5px solid #e0e4e6;border-radius:7px;padding:6px 10px;font-family:inherit;font-size:12px;background:white;outline:none" />
+      <button onclick="removeUnitePhone(${i})" style="background:#fff0f0;color:var(--red);border:1.5px solid #ffcdd2;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:900;cursor:pointer">✕</button>
+    </div>`).join('')
+}
+
+function addUnitePhone() {
+  _adminUnitePhones.push({ phone: '', initials: '', name: '' })
+  renderUnitePhonesAdmin()
+  // Focus the new phone input
+  setTimeout(() => document.getElementById('up-phone-' + (_adminUnitePhones.length - 1))?.focus(), 50)
+}
+
+function removeUnitePhone(i) {
+  _adminUnitePhones.splice(i, 1)
+  renderUnitePhonesAdmin()
+}
+
+function collectUnitePhones() {
+  return _adminUnitePhones.map((_, i) => ({
+    phone: (document.getElementById('up-phone-' + i)?.value || '').trim(),
+    initials: (document.getElementById('up-initials-' + i)?.value || '').trim().toUpperCase(),
+    name: (document.getElementById('up-name-' + i)?.value || '').trim()
+  })).filter(p => p.phone)
+}
+

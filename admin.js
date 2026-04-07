@@ -416,6 +416,11 @@ async function saveIntegrations() {
   cfg.unite_phone_number  = document.getElementById('a-unite-phone')?.value
   saveConfig(cfg)
 
+  // Save Claude API key to Supabase for all machines
+  if (supabase && cfg.claude_api_key) {
+    try { await saveSharedClaudeKey(cfg.claude_api_key) } catch(e) { console.error('Error saving shared Claude key:', e) }
+  }
+
   // Save Unite phone numbers to Supabase
   if (supabase) {
     const phones = collectUnitePhones()

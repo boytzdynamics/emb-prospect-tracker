@@ -8,8 +8,8 @@ const CONFIG = {
   SUPABASE_URL: 'https://osygjjljpdpltjtuklvj.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zeWdqamxqcGRwbHRqdHVrbHZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMDIzODcsImV4cCI6MjA4OTg3ODM4N30.LmSJ8IKkijGN2Tqp6DOFhvAs7K0v65TAoUak73-oM2g',
 
-  // Claude AI (shared key, pre-configured)
-  CLAUDE_API_KEY: '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',
+  // Claude AI — loaded from Supabase app_settings at runtime (NOT committed to repo)
+  CLAUDE_API_KEY: '',
 
   // Unite API — per-user, entered during setup
   UNIT_API_KEY: '',

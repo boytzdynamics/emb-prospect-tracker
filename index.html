@@ -413,7 +413,7 @@ body{font-family:'Nunito Sans',Segoe UI,sans-serif;background:#d4d8da;color:var(
         <div id="setup-advanced" style="display:none;margin-top:8px">
           <div class="frow"><div class="ff"><label>Supabase URL</label><input id="setup-sb-url" placeholder="Pre-configured — leave blank for default" /></div></div>
           <div class="frow"><div class="ff"><label>Supabase Anon Key</label><input id="setup-sb-key" placeholder="Pre-configured — leave blank for default" type="password" /></div></div>
-          <div class="frow"><div class="ff"><label>Claude API Key</label><input id="setup-claude-key" placeholder="Pre-configured — leave blank for default" type="password" /></div></div>
+          <div class="frow"><div class="ff"><label>Claude API Key</label><input id="setup-claude-key" placeholder="Auto-loaded from team settings if blank" type="password" /></div></div>
         </div>
       </div>
     </div>
@@ -900,6 +900,37 @@ function getLoInitials(phone) {
 }
 
 // ═══════════════════════════════════════════
+//  SHARED CLAUDE API KEY (from Supabase, not committed to repo)
+// ═══════════════════════════════════════════
+async function loadSharedClaudeKey(cfg) {
+  // If local config already has a key, use it
+  if (cfg.claude_api_key) return
+  if (!supabase) return
+  try {
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'claude_api_key').maybeSingle()
+    if (data?.value) {
+      cfg.claude_api_key = data.value
+      saveConfig(cfg)
+      console.log('Claude API key loaded from Supabase ✓')
+    }
+  } catch(e) { console.error('Error loading shared Claude key:', e) }
+}
+
+// Save Claude key to Supabase for all machines
+async function saveSharedClaudeKey(key) {
+  if (!supabase || !key) return
+  try {
+    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', 'claude_api_key').maybeSingle()
+    if (existing) {
+      await supabase.from('app_settings').update({ value: key }).eq('key', 'claude_api_key')
+    } else {
+      await supabase.from('app_settings').insert({ key: 'claude_api_key', value: key })
+    }
+    console.log('Claude API key saved to Supabase ✓')
+  } catch(e) { console.error('Error saving shared Claude key:', e) }
+}
+
+// ═══════════════════════════════════════════
 //  BOARD VISIBILITY (per-team, from Supabase)
 // ═══════════════════════════════════════════
 function isBoardVisible(boardName) {
@@ -1053,6 +1084,9 @@ async function init() {
       })
     }
 
+
+    // Load shared Claude API key from Supabase if not set locally
+    await loadSharedClaudeKey(cfg)
 
     // Load column labels from DB before rendering
     await loadColumnLabels()
@@ -2506,7 +2540,7 @@ function importSettings() {
   input.click()
 }
 
-function saveSettings() {
+async function saveSettings() {
   const cfg = loadConfig() || {}
   cfg.user_name = document.getElementById('s-name')?.value
   cfg.user_initials = document.getElementById('s-initials')?.value?.toUpperCase()
@@ -2515,6 +2549,10 @@ function saveSettings() {
   cfg.supabase_url = document.getElementById('s-sb-url')?.value
   cfg.supabase_anon_key = document.getElementById('s-sb-key')?.value
   cfg.claude_api_key = document.getElementById('s-claude')?.value
+  // Sync Claude key to Supabase for all machines
+  if (supabase && cfg.claude_api_key) {
+    try { await saveSharedClaudeKey(cfg.claude_api_key) } catch(e) {}
+  }
   cfg.unit_api_key = document.getElementById('s-unite-key')?.value
   // Gmail app passwords
   cfg.gmail_mbemb_app_password = document.getElementById('s-gmail-mbemb')?.value

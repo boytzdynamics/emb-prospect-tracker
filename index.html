@@ -1,0 +1,3201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://fonts.googleapis.com https://fonts.gstatic.com https://login.intermedia.net https://*.intermedia.net data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://login.intermedia.net https://*.intermedia.net https://fonts.googleapis.com https://fonts.gstatic.com;">
+<title>EMB Prospect Tracker</title>
+<script src="config.js"></script>
+<script src="node_modules/@supabase/supabase-js/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --dark:#2B3739;--blue:#3F80AA;--teal:#448694;--green:#61C08C;
+  --yellow:#EFEFA3;--off:#F5F5F5;--red:#E05252;--orange:#E07A3F;
+  --matt:#3F80AA;--chandler:#61C08C;--brian:#EFEFA3;
+  --nav-h:52px;--brd-h:52px;--sb:232px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Nunito Sans',Segoe UI,sans-serif;background:#d4d8da;color:var(--dark);display:flex;flex-direction:column;}
+
+/* ── FONTS ── */
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700;900&family=Bebas+Neue&display=swap');
+
+/* ── NAV ── */
+.nav{height:var(--nav-h);background:var(--dark);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;position:relative;z-index:300;box-shadow:0 2px 16px rgba(0,0,0,.4);-webkit-app-region:drag;}
+.nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--teal),var(--green),var(--yellow));}
+.nav-logo{width:32px;height:32px;background:linear-gradient(135deg,var(--blue),var(--teal));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:11px;color:#fff;letter-spacing:1px;box-shadow:0 2px 8px rgba(63,128,170,.5);flex-shrink:0;-webkit-app-region:no-drag;}
+.nav-brand{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;letter-spacing:3px;line-height:1;}.nav-brand span{color:var(--blue);}
+.nav-sub{font-size:7px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;margin-top:1px;}
+.nav-sync{margin-left:auto;display:flex;align-items:center;gap:8px;-webkit-app-region:no-drag;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(97,192,140,.6);}
+.sync-dot.syncing{background:var(--orange);animation:blink 1s infinite;}
+.sync-dot.error{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.sync-lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.7);}
+.nav-user{display:flex;align-items:center;gap:7px;padding:4px 10px;background:rgba(255,255,255,.07);border-radius:8px;cursor:pointer;-webkit-app-region:no-drag;}
+.nav-user-av{width:26px;height:26px;border-radius:50%;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;}
+.nav-user-av.matt{background:linear-gradient(135deg,var(--matt),#2a6490);color:#fff;}
+.nav-user-av.chandler{background:linear-gradient(135deg,var(--chandler),#4aab79);color:var(--dark);}
+.nav-user-av.brian{background:linear-gradient(135deg,var(--yellow),#d8d870);color:var(--dark);}
+.nav-user-name{font-size:11px;font-weight:700;color:rgba(255,255,255,.7);}
+
+/* ── BODY ── */
+.body-row{display:flex;flex:1;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sb);flex-shrink:0;background:var(--dark);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;position:relative;}
+.sidebar::-webkit-scrollbar{width:3px;}.sidebar::-webkit-scrollbar-thumb{background:var(--teal);border-radius:2px;}
+.sb-accent{position:absolute;top:0;right:0;width:2px;height:100%;background:linear-gradient(180deg,var(--blue),var(--teal),var(--green));pointer-events:none;z-index:2;}
+
+.sb-brand{padding:14px 13px 12px;border-bottom:1px solid rgba(255,255,255,.06);}
+.sb-brand-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.sb-logo{width:32px;height:32px;background:linear-gradient(135deg,var(--blue),var(--teal));border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:12px;color:#fff;letter-spacing:1px;box-shadow:0 2px 8px rgba(63,128,170,.4);}
+.sb-name{font-family:'Bebas Neue',sans-serif;font-size:14px;color:#fff;letter-spacing:3px;line-height:1;}.sb-name span{color:var(--blue);}
+.sb-sub{font-size:7px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;margin-top:1px;}
+
+.sb-toggle{display:flex;background:rgba(255,255,255,.07);border-radius:7px;padding:2px;gap:2px;}
+.sb-tbtn{flex:1;padding:5px 6px;border-radius:5px;border:none;background:transparent;color:rgba(255,255,255,.7);font-family:'Nunito Sans',sans-serif;font-size:10px;font-weight:900;cursor:pointer;transition:all .2s;}
+.sb-tbtn.on{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;box-shadow:0 2px 6px rgba(63,128,170,.4);}
+
+.sb-team-pick{padding:8px 13px;display:none;}.sb-team-pick.show{display:block;}
+.sb-team-pick label{font-size:7px;font-weight:900;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:1.5px;display:block;margin-bottom:4px;}
+.sb-dd{width:100%;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:7px;padding:6px 10px;color:#fff;font-family:'Nunito Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;outline:none;-webkit-appearance:none;}
+.sb-dd option{background:var(--dark);}
+
+.sb-sec{padding:7px 13px 2px;font-size:7px;font-weight:900;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:8px 13px;cursor:pointer;transition:all .2s;border-left:3px solid transparent;margin:1px 0;}
+.sb-item:hover{background:rgba(255,255,255,.06);}
+.sb-item.on{background:rgba(63,128,170,.18);border-left-color:var(--blue);}
+.sb-item .si{font-size:14px;width:17px;text-align:center;flex-shrink:0;}
+.sb-item .sl{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);}
+.sb-item.on .sl,.sb-item:hover .sl{color:#fff;}
+.sb-num{margin-left:auto;min-width:19px;height:19px;border-radius:10px;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+.sb-num.r{background:var(--red);color:#fff;}.sb-num.b{background:var(--blue);color:#fff;}.sb-num.d{background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);}
+
+.sb-lo{margin-top:auto;padding:10px 13px;border-top:1px solid rgba(255,255,255,.06);}
+.sb-lo-lbl{font-size:7px;font-weight:900;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.sb-lo-row{display:flex;gap:5px;flex-wrap:wrap;}
+.loa{width:28px;height:28px;border-radius:50%;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid transparent;transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,.2);title:attr(data-name);}
+.loa:hover{transform:scale(1.1);border-color:rgba(255,255,255,.4);}
+.loa.matt{background:linear-gradient(135deg,var(--matt),#2a6490);color:#fff;}
+.loa.chandler{background:linear-gradient(135deg,var(--chandler),#4aab79);color:var(--dark);}
+.loa.brian{background:linear-gradient(135deg,var(--yellow),#d8d870);color:var(--dark);}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+
+.board-hdr{height:var(--brd-h);background:#fff;border-bottom:1px solid #dde2e4;padding:0 18px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.06);}
+.bh-title{font-family:'Bebas Neue',sans-serif;font-size:21px;letter-spacing:3px;color:var(--dark);display:flex;align-items:center;gap:8px;}
+.bh-icon{width:28px;height:28px;background:linear-gradient(135deg,var(--blue),var(--teal));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.team-pill{background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:900;}
+.bh-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.btn-new{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;border:none;padding:7px 15px;border-radius:8px;font-family:inherit;font-weight:900;font-size:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;box-shadow:0 3px 10px rgba(63,128,170,.3);}
+.btn-new:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(63,128,170,.4);}
+.btn-refresh{background:rgba(68,134,148,.15);color:var(--teal);border:1.5px solid rgba(68,134,148,.3);padding:6px 12px;border-radius:8px;font-family:inherit;font-weight:900;font-size:11px;cursor:pointer;transition:all .2s;}
+.btn-refresh:hover{background:rgba(68,134,148,.25);}
+
+/* ── BOARDS ── */
+.board{display:none;flex:1;overflow-x:auto;overflow-y:hidden;}.board.on{display:flex;}
+.board-list{display:none;flex-direction:column;flex:1;overflow-y:auto;}.board-list.on{display:flex;}
+.board::-webkit-scrollbar{height:5px;}.board::-webkit-scrollbar-track{background:#d0d4d6;}.board::-webkit-scrollbar-thumb{background:var(--teal);border-radius:3px;}
+
+/* ── COLUMNS ── */
+.kcol{min-width:220px;flex:1;border-right:1px solid #dde2e4;display:flex;flex-direction:column;background:var(--off);}
+.kcol:last-child{border-right:none;}.kcol.cold-col{background:#eff3f5;}
+.khead{padding:10px 12px 8px;background:#fff;border-bottom:3px solid var(--ac);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.05);}
+.khead-name{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;color:var(--dark);display:flex;align-items:center;gap:5px;}
+.kpill{width:19px;height:19px;border-radius:50%;background:var(--ac);color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;}
+.kcards-scroll{flex:1;overflow-y:auto;padding:9px 7px;display:flex;flex-direction:column;gap:8px;}
+.kcards-scroll::-webkit-scrollbar{width:3px;}.kcards-scroll::-webkit-scrollbar-thumb{background:var(--teal);border-radius:2px;}
+.col-empty{text-align:center;color:#777;font-size:11px;font-weight:700;padding:20px 10px;}
+
+/* ── CARD ── */
+.card{background:#fff;border-radius:11px;padding:12px 13px;box-shadow:0 1px 4px rgba(0,0,0,.08);cursor:pointer;border-left:4px solid var(--lc, var(--blue));transition:all .2s;position:relative;overflow:hidden;}
+.card:hover{box-shadow:0 4px 16px rgba(0,0,0,.12);transform:translateY(-1px);}
+.card.overdue::before{content:'';position:absolute;inset:0;background:rgba(224,82,82,.11);border-radius:11px;pointer-events:none;z-index:1;}
+.card.overdue{border-left-color:var(--red)!important;border-top:2px solid var(--red);}
+.card.duetoday::before{content:'';position:absolute;inset:0;background:rgba(224,122,63,.09);border-radius:11px;pointer-events:none;z-index:1;}
+.card.duetoday{border-left-color:var(--orange)!important;border-top:2px solid var(--orange);}
+.card.needs-response{border-left-color:#d4a500 !important;border-top:2px solid #d4a500 !important;}
+.card.needs-response::before{content:'';position:absolute;inset:0;background:rgba(239,239,163,.38);border-radius:11px;pointer-events:none;z-index:1;}
+.card.hybrid-overdue{border-left:8px solid var(--red)!important;border-top:4px solid var(--red);}
+.card.hybrid-overdue::before{content:'';position:absolute;inset:0;background:rgba(239,239,163,.38);border-radius:11px;pointer-events:none;z-index:1;}
+.fu-tag.needs-resp{background:#fff9c4;color:#b8860b;font-weight:900;}
+
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;position:relative;z-index:2;}
+.card-name{font-weight:900;font-size:13px;color:var(--dark);line-height:1.2;}
+.card-src{font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.4px;margin-top:1px;}
+.lo-dot{width:22px;height:22px;border-radius:50%;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;}
+.lo-dot.matt{background:linear-gradient(135deg,var(--matt),#2a6490);color:#fff;}
+.lo-dot.chandler{background:linear-gradient(135deg,var(--chandler),#4aab79);color:var(--dark);}
+.lo-dot.brian{background:linear-gradient(135deg,var(--yellow),#d8d870);color:var(--dark);}
+
+.src-tag{display:inline-block;background:var(--off);border:1px solid #e0e4e6;border-radius:20px;padding:1px 7px;font-size:9px;font-weight:900;color:var(--teal);margin-top:3px;position:relative;z-index:2;}
+
+.fu-tag{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:6px;font-size:10px;font-weight:700;margin-top:4px;position:relative;z-index:2;}
+.fu-tag.ok{background:#edfaf4;color:var(--green);}
+.fu-tag.due{background:#fff4e6;color:var(--orange);font-weight:900;}
+.fu-tag.over{background:#fff0f0;color:var(--red);font-weight:900;}
+.pulse{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;animation:blink 1.4s infinite;}
+
+/* close dates — only show on In Process column */
+.close-dates{margin-top:5px;padding:6px 8px;background:#f8f9fa;border-radius:7px;border:1px solid #e8eaec;position:relative;z-index:2;}
+.cd-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;}
+.cd-row:last-child{margin-bottom:0;}
+.cd-label{font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:.8px;}
+.cd-value{font-size:11px;font-weight:700;color:var(--dark);}
+.cd-value.urgent{color:var(--red);}
+.cd-value.soon{color:var(--orange);}
+
+.card-note{font-size:11px;color:#555;margin-top:5px;line-height:1.45;border-top:1px solid #f0f2f3;padding-top:5px;position:relative;z-index:2;}
+
+.qn-row{display:flex;gap:4px;margin-top:6px;position:relative;z-index:2;}
+.qn-input{flex:1;border:1.5px solid #e0e4e6;border-radius:6px;padding:5px 8px;font-family:inherit;font-size:11px;color:var(--dark);background:var(--off);outline:none;transition:border-color .2s;}
+.qn-input:focus{border-color:var(--blue);background:#fff;}
+.btn-qn{background:var(--blue);color:#fff;border:none;padding:5px 9px;border-radius:6px;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap;}
+
+.card-btns{display:flex;gap:3px;margin-top:6px;flex-wrap:wrap;position:relative;z-index:2;}
+.btn-sm{padding:4px 9px;border-radius:6px;font-size:10px;font-weight:900;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;}
+.btn-sm:hover{transform:scale(1.04);}
+.btn-log-sm{background:linear-gradient(135deg,var(--green),#4aab79);color:var(--dark);}
+.btn-move-sm{background:var(--off);color:var(--dark);border:1px solid #dde2e4 !important;border:none;}
+.btn-move-sm:hover{background:var(--dark);color:#fff;}
+.btn-leads-sm{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;}
+.btn-edit-sm{background:transparent;color:#555;border:1px solid #e0e4e6 !important;border:none;margin-left:auto;}
+.btn-edit-sm:hover{background:var(--blue);color:#fff;}
+.btn-call-sm{background:linear-gradient(135deg,#3a9e6e,#2d8a5e);color:#fff;}
+.btn-text-sm{background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;}
+
+/* ── CLOSED LIST ── */
+.list-hdr{display:grid;gap:10px;padding:7px 16px;font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e0e4e6;background:#fff;flex-shrink:0;}
+.list-body{padding:12px 16px;display:flex;flex-direction:column;gap:7px;flex:1;}
+.list-row{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:grid;gap:10px;padding:11px 14px;border-left:4px solid var(--lc,var(--blue));cursor:pointer;transition:all .2s;align-items:center;}
+.list-row:hover{box-shadow:0 4px 12px rgba(0,0,0,.1);transform:translateY(-1px);}
+
+/* ── OVERLAY / MODALS ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:900;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.overlay.open{display:flex;}
+.modal{background:#fff;border-radius:16px;width:660px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+.modal.wide{width:800px;}
+.modal.sm{width:500px;}
+.mhd{background:linear-gradient(135deg,var(--dark),#3a4e50);padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;position:relative;flex-shrink:0;}
+.mhd::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--teal),var(--green),var(--yellow));}
+.mtitle{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;letter-spacing:3px;}
+.msub{font-size:9px;font-weight:700;color:rgba(255,255,255,.75);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
+.mx{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;}
+.mx:hover{background:rgba(255,255,255,.25);}
+.mbd{padding:20px;}
+.mft{padding:14px 20px;border-top:1px solid #eaeef0;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex-shrink:0;}
+
+/* form */
+.frow{display:flex;gap:12px;margin-bottom:12px;}
+.ff{flex:1;display:flex;flex-direction:column;gap:4px;}
+.ff label{font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1.2px;}
+.ff input,.ff select,.ff textarea{border:1.5px solid #e0e4e6;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:13px;font-weight:600;color:var(--dark);background:var(--off);outline:none;transition:border-color .2s;width:100%;}
+.ff input:focus,.ff select:focus,.ff textarea:focus{border-color:var(--blue);background:#fff;}
+.fsec{font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1.5px;margin:14px 0 8px;display:block;}
+
+/* loan type */
+.loan-type-row{display:flex;gap:7px;margin-bottom:10px;}
+.lt-btn{flex:1;padding:8px 10px;background:var(--off);border:2px solid #e0e4e6;border-radius:9px;text-align:center;cursor:pointer;transition:all .2s;font-size:12px;font-weight:700;color:var(--dark);}
+.lt-btn.on{border-color:var(--blue);background:#eef5fc;}
+
+/* source checkboxes */
+.src-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.src-cb{display:flex;align-items:center;gap:7px;background:var(--off);border:1.5px solid #e0e4e6;border-radius:8px;padding:7px 10px;cursor:pointer;transition:all .2s;}
+.src-cb:hover{border-color:var(--blue);background:#f0f6fb;}
+.src-cb.on{border-color:var(--blue);background:#eef5fc;}
+.src-cb input{width:13px;height:13px;accent-color:var(--blue);cursor:pointer;}
+.src-cb span{font-size:11px;font-weight:700;color:var(--dark);}
+.src-other-wrap{display:none;border:1.5px solid #e0e4e6;border-radius:8px;padding:8px 10px;margin-top:-2px;margin-bottom:4px;}
+.src-other-wrap.show{display:block;}
+.src-other-wrap input{width:100%;border:none;outline:none;font-family:inherit;font-size:12px;font-weight:600;color:var(--dark);background:transparent;}
+
+/* destination picker */
+.dest-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;}
+.dest-btn{padding:10px;background:var(--off);border:2px solid #e0e4e6;border-radius:9px;text-align:center;cursor:pointer;transition:all .2s;}
+.dest-btn:hover{border-color:var(--blue);}
+.dest-btn.on{border-color:var(--blue);background:#eef5fc;}
+.dest-btn .dest-icon{font-size:18px;margin-bottom:3px;}
+.dest-btn .dest-label{font-size:11px;font-weight:700;color:var(--dark);}
+.col-picker{display:none;}.col-picker.show{display:block;}
+.col-picker select{width:100%;border:1.5px solid #e0e4e6;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:12px;font-weight:700;color:var(--dark);background:var(--off);outline:none;}
+.col-picker select:focus{border-color:var(--blue);}
+
+/* follow-up */
+.fu-box{background:var(--off);border:1.5px solid #e0e4e6;border-radius:10px;padding:13px;margin-bottom:12px;}
+.fu-box-ttl{font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;}
+.fu-opts{display:flex;gap:8px;flex-wrap:wrap;}
+.fu-opt{background:#fff;border:1.5px solid #e0e4e6;border-radius:8px;padding:7px 11px;display:flex;align-items:center;gap:6px;cursor:pointer;transition:all .2s;}
+.fu-opt.on{border-color:var(--blue);background:#eef5fc;}
+.fu-opt label{font-size:12px;font-weight:700;color:var(--dark);cursor:pointer;}
+.fu-days{width:44px;border:1.5px solid #e0e4e6;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:12px;font-weight:700;color:var(--dark);background:#fff;outline:none;text-align:center;}
+.fu-date{border:1.5px solid #e0e4e6;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:11px;font-weight:700;color:var(--dark);background:#fff;outline:none;}
+
+/* contact type buttons */
+.ct-types{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px;}
+.ct-type{background:var(--off);border:2px solid #e0e4e6;border-radius:10px;padding:10px 7px;text-align:center;cursor:pointer;transition:all .2s;}
+.ct-type:hover{border-color:var(--teal);}
+.ct-type.on{border-color:var(--blue);background:#eef5fc;}
+.ct-type .ci{font-size:18px;margin-bottom:3px;}
+.ct-type .cl{font-size:10px;font-weight:900;color:var(--dark);}
+.ct-ign{grid-column:span 3;background:var(--off);border:1.5px dashed #ccc;border-radius:9px;padding:8px;text-align:center;cursor:pointer;font-size:11px;font-weight:700;color:#555;transition:all .2s;}
+.ct-ign:hover{background:#f5f5f5;color:#555;}
+.ct-ign.on{background:#fff4e6;border-color:var(--orange);color:var(--orange);}
+.ign-wrap{display:none;margin-top:7px;}.ign-wrap.show{display:block;}
+.ign-lbl{font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+
+/* card detail */
+.cd-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.cd-chip{padding:3px 11px;border-radius:20px;font-size:10px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;}
+.cd-chip.stg{background:linear-gradient(135deg,var(--green),#4aab79);color:var(--dark);}
+.cd-chip.lo{background:linear-gradient(135deg,var(--matt),#2a6490);color:#fff;}
+.cd-chip.src{background:var(--off);border:1.5px solid #e0e4e6;color:var(--teal);}
+.cd-chip.fu-ok{background:#edfaf4;color:var(--green);}
+.cd-chip.fu-due{background:#fff4e6;color:var(--orange);}
+.cd-chip.fu-over{background:#fff0f0;color:var(--red);}
+.cd-chip.purchase{background:#eef5fc;color:var(--blue);}
+.cd-chip.refi{background:#eef8f9;color:var(--teal);}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.cdf label{font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px;}
+.cdf .cdv{font-size:13px;font-weight:700;color:var(--dark);}
+.cdf .cdv.big{font-size:15px;color:var(--blue);}
+
+.nlog{display:flex;flex-direction:column;gap:6px;margin-top:9px;}
+.nentry{background:var(--off);border-radius:8px;padding:9px 11px;}
+.neh{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.neh-dt{font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:.8px;}
+.neh-au{font-size:9px;font-weight:900;color:var(--teal);}
+.ne-txt{font-size:12px;color:var(--dark);line-height:1.45;}
+
+.litem{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--off);}
+.litem:last-child{border-bottom:none;}
+.lbadge{border-radius:6px;padding:2px 8px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap;flex-shrink:0;}
+.lbadge.call{background:linear-gradient(135deg,var(--green),#4aab79);color:var(--dark);}
+.lbadge.email{background:linear-gradient(135deg,var(--blue),#2a6490);color:#fff;}
+.lbadge.text{background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;}
+.lbadge.note{background:linear-gradient(135deg,#9c7dd9,#7a5dc7);color:#fff;}
+.lbadge.ignore{background:#e0e4e6;color:#555;}
+.ldt{font-size:10px;font-weight:900;color:#555;}
+.lnote{font-size:12px;color:var(--dark);margin-top:1px;line-height:1.4;}
+.lauthor{font-size:10px;font-weight:700;color:var(--teal);margin-top:1px;}
+
+/* assign & send */
+.as-box{background:linear-gradient(135deg,rgba(43,55,57,.04),rgba(63,128,170,.05));border:1.5px solid #dde2e4;border-radius:12px;padding:14px;margin-bottom:12px;}
+.as-ttl{font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;}
+.as-row{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;}
+.as-sel{flex:1;border:1.5px solid #e0e4e6;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:12px;font-weight:700;color:var(--dark);background:var(--off);outline:none;}
+.btn-send{background:linear-gradient(135deg,var(--dark),#3a4e50);color:var(--yellow);border:2px solid rgba(239,239,163,.2);padding:9px 16px;border-radius:9px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(43,55,57,.3);transition:all .2s;}
+.btn-send:hover{border-color:rgba(239,239,163,.4);transform:translateY(-1px);}
+
+/* text thread panel */
+.text-thread{border:2px solid var(--teal);border-radius:12px;overflow:hidden;margin-bottom:12px;}
+.text-thread-hd{background:linear-gradient(135deg,var(--teal),var(--blue));padding:9px 14px;display:flex;align-items:center;justify-content:space-between;}
+.text-thread-hd span{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:#fff;}
+.text-thread-hd .unit-badge{font-size:9px;font-weight:900;background:rgba(255,255,255,.15);color:#fff;padding:2px 8px;border-radius:20px;}
+.text-msgs{padding:10px;max-height:180px;overflow-y:auto;background:#fff;display:flex;flex-direction:column;gap:6px;}
+.text-msg{max-width:80%;padding:7px 10px;border-radius:10px;font-size:12px;line-height:1.4;}
+.text-msg.inbound{background:#f0f2f3;color:var(--dark);align-self:flex-start;border-bottom-left-radius:3px;}
+.text-msg.outbound{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;align-self:flex-end;border-bottom-right-radius:3px;}
+.text-msg-time{font-size:9px;opacity:.6;margin-top:2px;}
+.text-input-row{display:flex;gap:6px;padding:8px;background:var(--off);border-top:1px solid #e0e4e6;}
+.text-input{flex:1;border:1.5px solid #e0e4e6;border-radius:8px;padding:7px 10px;font-family:inherit;font-size:12px;color:var(--dark);background:#fff;outline:none;}
+.text-input:focus{border-color:var(--blue);}
+.btn-send-text{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer;}
+
+/* buttons */
+.btn-p{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;border:none;padding:9px 18px;border-radius:8px;font-family:inherit;font-weight:900;font-size:12px;cursor:pointer;transition:all .2s;box-shadow:0 3px 8px rgba(63,128,170,.3);}
+.btn-p:hover{transform:translateY(-1px);}
+.btn-s{background:var(--off);color:var(--dark);border:1.5px solid #dde2e4;padding:9px 18px;border-radius:8px;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;}
+.btn-s:hover{background:var(--dark);color:#fff;border-color:var(--dark);}
+.btn-g{background:linear-gradient(135deg,var(--green),#4aab79);color:var(--dark);border:none;padding:9px 18px;border-radius:8px;font-family:inherit;font-weight:900;font-size:12px;cursor:pointer;}
+.btn-d{background:#fff0f0;color:var(--red);border:1.5px solid #ffcdd2;padding:9px 18px;border-radius:8px;font-family:inherit;font-weight:900;font-size:12px;cursor:pointer;}
+
+/* toast */
+.toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--dark);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.3);transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none;max-width:320px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.green{border-left:4px solid var(--green);}
+.toast.red{border-left:4px solid var(--red);}
+.toast.blue{border-left:4px solid var(--blue);}
+
+/* loading */
+.loading-screen{position:fixed;inset:0;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s;}
+.loading-screen.hidden{opacity:0;pointer-events:none;}
+.loading-logo{font-family:'Bebas Neue',sans-serif;font-size:48px;color:#fff;letter-spacing:8px;margin-bottom:8px;}
+.loading-logo span{color:var(--blue);}
+.loading-sub{font-size:11px;font-weight:700;color:rgba(255,255,255,.75);letter-spacing:3px;text-transform:uppercase;margin-bottom:32px;}
+.loading-bar{width:200px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;}
+.loading-bar-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--teal),var(--green));border-radius:3px;animation:load 1.8s ease-in-out infinite;}
+@keyframes load{0%{width:0;margin-left:0}50%{width:100%;margin-left:0}100%{width:0;margin-left:100%}}
+
+/* setup screen */
+.setup-screen{position:fixed;inset:0;background:var(--dark);display:flex;align-items:center;justify-content:center;z-index:9998;display:none;}
+.setup-screen.show{display:flex;}
+.setup-card{background:#fff;border-radius:16px;width:480px;padding:0;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+.setup-hd{background:linear-gradient(135deg,var(--dark),#3a4e50);padding:24px;position:relative;}
+.setup-hd::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--teal),var(--green),var(--yellow));}
+.setup-title{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;letter-spacing:3px;}
+.setup-sub{font-size:10px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:1px;text-transform:uppercase;margin-top:4px;}
+.setup-body{padding:24px;}
+.setup-footer{padding:16px 24px;border-top:1px solid #eaeef0;display:flex;justify-content:flex-end;gap:8px;}
+
+/* Office picker buttons */
+.office-pick{display:flex;gap:8px;margin-bottom:12px;}
+.office-btn{flex:1;padding:12px;border-radius:10px;border:2.5px solid #e0e4e6;background:var(--off);font-family:inherit;font-size:13px;font-weight:900;cursor:pointer;transition:all .2s;text-align:center;color:var(--dark);}
+.office-btn:hover{border-color:var(--blue);background:#eef4f9;}
+.office-btn.bmb.on{border-color:var(--blue)!important;background:linear-gradient(135deg,var(--blue),#2a6490)!important;color:white!important;box-shadow:0 3px 12px rgba(63,128,170,.4)!important;}
+.office-btn.emb.on{border-color:var(--teal)!important;background:linear-gradient(135deg,var(--teal),#2d6e7a)!important;color:white!important;box-shadow:0 3px 12px rgba(68,134,148,.4)!important;}
+.office-btn.bmb.on span,.office-btn.emb.on span{opacity:1!important;color:rgba(255,255,255,.85)!important;}
+.office-badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:9px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;}
+.office-badge.bmb{background:linear-gradient(135deg,var(--blue),#2a6490);color:white;}
+.office-badge.emb{background:linear-gradient(135deg,var(--teal),#2d6e7a);color:white;}
+.parser-box{background:linear-gradient(135deg,rgba(63,128,170,.06),rgba(68,134,148,.06));border:2px dashed var(--blue);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center;cursor:pointer;transition:all .2s;}
+.parser-box:hover{border-color:var(--teal);}
+.parser-ttl{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--blue);margin-bottom:4px;}
+.parser-sub{font-size:11px;color:#555;font-weight:700;}
+.parser-paste{width:100%;min-height:80px;border:1.5px solid #e0e4e6;border-radius:8px;padding:9px 12px;font-family:inherit;font-size:12px;color:var(--dark);background:var(--off);outline:none;resize:vertical;margin-top:10px;display:none;}
+.parser-paste.show{display:block;}
+.parser-loading{display:none;align-items:center;gap:8px;justify-content:center;padding:10px;}
+.parser-loading.show{display:flex;}
+.parser-spinner{width:18px;height:18px;border:2px solid rgba(63,128,170,.2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;}
+.dup-warning{background:#fff4e6;border:2px solid var(--orange);border-radius:10px;padding:14px;margin-bottom:12px;display:none;}
+.dup-warning.show{display:block;}
+.dup-warning-ttl{font-size:11px;font-weight:900;color:var(--orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.dup-card{background:white;border-radius:8px;padding:10px 12px;border-left:4px solid var(--orange);margin-bottom:6px;cursor:pointer;}
+.dup-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);}
+.dup-name{font-weight:900;font-size:13px;}
+.dup-detail{font-size:11px;color:#555;margin-top:2px;}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div class="loading-screen" id="loading">
+  <div>
+    <div class="loading-logo">EUGENE <span>MB</span></div>
+    <div class="loading-sub">Prospect Tracker</div>
+    <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+  </div>
+</div>
+
+<!-- SETUP SCREEN (first run) -->
+<div class="setup-screen" id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-hd">
+      <div class="setup-title">FIRST TIME SETUP</div>
+      <div class="setup-sub">Connect your Supabase + configure your account</div>
+    </div>
+    <div class="setup-body">
+      <div class="frow"><div class="ff"><label>Supabase URL</label><input id="setup-sb-url" placeholder="https://xxxx.supabase.co" /></div></div>
+      <div class="frow"><div class="ff"><label>Supabase Anon Key</label><input id="setup-sb-key" placeholder="eyJ..." type="password" /></div></div>
+      <div class="frow"><div class="ff"><label>Claude API Key</label><input id="setup-claude-key" placeholder="sk-ant-..." type="password" /></div></div>
+      <div class="frow"><div class="ff"><label>Unite API Key (optional)</label><input id="setup-unite-key" placeholder="Leave blank to skip" /></div></div>
+      <div class="frow"><div class="ff"><label>Unite Shared Phone Number</label><input id="setup-unite-phone" placeholder="+15415551234" /></div></div>
+      <div class="frow">
+        <div class="ff"><label>Your Name</label><input id="setup-name" placeholder="Matt" /></div>
+        <div class="ff"><label>Your Role</label>
+          <select id="setup-role"><option value="admin">Admin (Super Admin)</option><option value="lo">Loan Officer</option></select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="ff"><label>Your Team</label>
+          <select id="setup-team"><option value="matt">Team Matt</option><option value="shad">Team Shad</option><option value="lauren">Team Lauren</option></select>
+        </div>
+        <div class="ff"><label>Your Initials</label><input id="setup-initials" placeholder="M" maxlength="2" /></div>
+      </div>
+    </div>
+    <div class="setup-footer">
+      <button class="btn-p" onclick="saveSetup()">SAVE &amp; LAUNCH →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<nav class="nav">
+  <div class="nav-logo">EMB</div>
+  <div style="line-height:1">
+    <div class="nav-brand">EUGENE <span>MORTGAGE</span></div>
+    <div class="nav-sub">Prospect Tracker</div>
+  </div>
+  <div class="nav-sync" style="margin-left:16px">
+    <button onclick="forceSyncNow()" id="sync-now-btn" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:4px 12px;border-radius:7px;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;-webkit-app-region:no-drag" title="Force sync emails + texts now">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span class="sync-lbl" id="sync-lbl">↻ Sync</span>
+    </button>
+  </div>
+  <div class="nav-sync">
+    <button onclick="renderAdminPanel()" id="admin-btn" style="background:rgba(239,239,163,.12);border:1.5px solid rgba(239,239,163,.25);color:var(--yellow);padding:4px 12px;border-radius:8px;font-family:inherit;font-size:10px;font-weight:900;cursor:pointer;letter-spacing:1px;-webkit-app-region:no-drag">⚙️ ADMIN</button>
+    <div class="nav-user" onclick="openSettings()">
+      <div class="nav-user-av matt" id="nav-avatar">M</div>
+      <span class="nav-user-name" id="nav-name">Matt</span>
+    </div>
+  </div>
+  <div class="nav-badge" id="nav-badge">PC v1 Beta</div>
+</nav>
+
+<div class="body-row">
+<!-- SIDEBAR -->
+<aside class="sidebar" style="position:relative">
+  <div class="sb-accent"></div>
+  <div class="sb-brand">
+    <div class="sb-brand-row">
+      <div class="sb-logo">EMB</div>
+      <div><div class="sb-name">EUGENE <span>MB</span></div><div class="sb-sub">Prospect Tracker</div></div>
+    </div>
+    <div class="sb-toggle">
+      <button class="sb-tbtn on" id="sb-my-btn" onclick="sbToggle('my')">My Team</button>
+      <button class="sb-tbtn" id="sb-team-btn" onclick="sbToggle('team')">Other Teams</button>
+    </div>
+  </div>
+
+  <div id="sb-my-nav">
+    <div class="sb-sec">BOARDS</div>
+    <div class="sb-item on" onclick="goBoard('leads',this)" id="nav-leads"><span class="si">⚡</span><span class="sl">Leads</span><span class="sb-num b" id="badge-leads">0</span></div>
+    <div class="sb-item" onclick="goBoard('prospects',this)" id="nav-prospects"><span class="si">🏠</span><span class="sl">Prospects</span><span class="sb-num r" id="badge-prospects">0</span></div>
+    <div class="sb-item" onclick="goBoard('closed',this)" id="nav-closed"><span class="si">✅</span><span class="sl">Closed Loans</span></div>
+    <div class="sb-item" onclick="goBoard('dead',this)" id="nav-dead"><span class="si">💀</span><span class="sl">Dead Files</span></div>
+  </div>
+
+  <div id="sb-team-nav" style="display:none">
+    <div class="sb-team-pick show">
+      <label>Viewing Team</label>
+      <select class="sb-dd" onchange="switchTeamView(this.value)" id="team-select">
+        <option value="shad">👥 Team Shad</option>
+        <option value="lauren">👥 Team Lauren</option>
+      </select>
+    </div>
+    <div class="sb-sec">THEIR BOARDS</div>
+    <div class="sb-item on" onclick="goBoard('leads',this)"><span class="si">⚡</span><span class="sl">Leads</span></div>
+    <div class="sb-item" onclick="goBoard('prospects',this)"><span class="si">🏠</span><span class="sl">Prospects</span></div>
+    <div class="sb-item" onclick="goBoard('closed',this)"><span class="si">✅</span><span class="sl">Closed Loans</span></div>
+    <div class="sb-item" onclick="goBoard('dead',this)"><span class="si">💀</span><span class="sl">Dead Files</span></div>
+  </div>
+
+  <div class="sb-lo">
+    <div class="sb-lo-lbl">TEAM MATT</div>
+    <div class="sb-lo-row" id="lo-row">
+      <div class="loa matt" title="Matt">M</div>
+      <div class="loa chandler" title="Chandler">C</div>
+      <div class="loa brian" title="Brian">B</div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="board-hdr">
+    <div class="bh-title" id="bh-title"><div class="bh-icon">🏠</div>PROSPECTS</div>
+    <span class="team-pill" id="team-pill" style="display:none">Team Shad</span>
+    <div class="bh-right">
+      <button class="btn-refresh" onclick="refreshData()" title="Last synced: just now">↻ Sync</button>
+      <button class="btn-new" onclick="openNewProspect()"><span style="font-size:14px">＋</span> NEW PROSPECT</button>
+    </div>
+  </div>
+
+  <!-- PROSPECTS BOARD -->
+  <div id="board-prospects" class="board on">
+    <!-- FAAS Team (far left — labeled) -->
+    <div class="kcol" id="col-faas">
+      <div class="khead" style="--ac:#3F80AA">
+        <div class="khead-name">⭐ FAAS TEAM</div>
+        <div class="kpill" style="background:#3F80AA" id="pill-faas">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-faas">
+        <div class="col-empty">No FAAS prospects yet</div>
+      </div>
+    </div>
+    <!-- General columns -->
+    <div class="kcol" id="col-gen1">
+      <div class="khead" style="--ac:#448694">
+        <div class="khead-name">🏠 PROSPECTS</div>
+        <div class="kpill" style="background:#448694" id="pill-gen1">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-gen1">
+        <div class="col-empty">No prospects yet</div>
+      </div>
+    </div>
+    <div class="kcol" id="col-gen2">
+      <div class="khead" style="--ac:#448694">
+        <div class="khead-name">🏠 PROSPECTS</div>
+        <div class="kpill" style="background:#448694" id="pill-gen2">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-gen2">
+        <div class="col-empty">No prospects yet</div>
+      </div>
+    </div>
+    <div class="kcol" id="col-gen3">
+      <div class="khead" style="--ac:#448694">
+        <div class="khead-name">🏠 PROSPECTS</div>
+        <div class="kpill" style="background:#448694" id="pill-gen3">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-gen3">
+        <div class="col-empty">No prospects yet</div>
+      </div>
+    </div>
+    <div class="kcol" id="col-gen4">
+      <div class="khead" style="--ac:#448694">
+        <div class="khead-name">🏠 PROSPECTS</div>
+        <div class="kpill" style="background:#448694" id="pill-gen4">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-gen4">
+        <div class="col-empty">No prospects yet</div>
+      </div>
+    </div>
+    <!-- Meta Prospects (far right — labeled) -->
+    <div class="kcol cold-col" id="col-meta">
+      <div class="khead" style="--ac:#8aafc7">
+        <div class="khead-name">📱 META PROSPECTS</div>
+        <div class="kpill" style="background:#8aafc7" id="pill-meta">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-meta">
+        <div class="col-empty">No meta prospects yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADS BOARD -->
+  <div id="board-leads" class="board">
+    <div class="kcol">
+      <div class="khead" style="--ac:#8aafc7">
+        <div class="khead-name">👤 PROSPECT</div>
+        <div class="kpill" style="background:#8aafc7" id="pill-lead-prospect">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-lead-prospect"><div class="col-empty">No leads yet</div></div>
+    </div>
+    <div class="kcol">
+      <div class="khead" style="--ac:#448694">
+        <div class="khead-name">📂 GETTING DOCS</div>
+        <div class="kpill" style="background:#448694" id="pill-lead-docs">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-lead-docs"><div class="col-empty">No leads yet</div></div>
+    </div>
+    <div class="kcol">
+      <div class="khead" style="--ac:#E07A3F">
+        <div class="khead-name">✅ PRE-APP / REFI</div>
+        <div class="kpill" style="background:#E07A3F" id="pill-lead-ready">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-lead-ready"><div class="col-empty">No leads yet</div></div>
+    </div>
+    <div class="kcol">
+      <div class="khead" style="--ac:#61C08C">
+        <div class="khead-name">🏆 PRE-APPROVED</div>
+        <div class="kpill" style="background:#61C08C" id="pill-lead-approved">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-lead-approved"><div class="col-empty">No leads yet</div></div>
+    </div>
+    <div class="kcol">
+      <div class="khead" style="--ac:#3F80AA">
+        <div class="khead-name">📋 IN PROCESS</div>
+        <div class="kpill" style="background:#3F80AA" id="pill-lead-inprocess">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-lead-inprocess"><div class="col-empty">No leads yet</div></div>
+    </div>
+  </div>
+
+  <!-- CLOSED LOANS -->
+  <div id="board-closed" class="board-list">
+    <div class="list-hdr" style="grid-template-columns:1fr 1fr 120px 130px 90px">
+      <span>Name</span><span>Loan Type</span><span>Amount</span><span>Closed Date</span><span></span>
+    </div>
+    <div class="list-body" id="closed-list">
+      <div style="text-align:center;color:#777;font-size:12px;font-weight:700;padding:30px">No closed loans yet</div>
+    </div>
+  </div>
+
+  <!-- DEAD FILES -->
+  <div id="board-dead" class="board">
+    <div class="kcol cold-col">
+      <div class="khead" style="--ac:#888">
+        <div class="khead-name">💀 DEAD PROSPECTS</div>
+        <div class="kpill" style="background:#888" id="pill-dead-prospect">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-dead-prospect"><div class="col-empty">No dead prospects</div></div>
+    </div>
+    <div class="kcol cold-col">
+      <div class="khead" style="--ac:#888">
+        <div class="khead-name">❌ DENIED PRE-APPROVALS</div>
+        <div class="kpill" style="background:#888" id="pill-dead-denied">0</div>
+      </div>
+      <div class="kcards-scroll" id="cards-dead-denied"><div class="col-empty">No denied pre-approvals</div></div>
+    </div>
+  </div>
+
+</div><!-- end .main -->
+</div><!-- end .body-row -->
+
+<!-- ═══════════════════════════
+     MODAL: NEW PROSPECT
+═══════════════════════════ -->
+<div class="overlay" id="modal-new">
+<div class="modal">
+  <div class="mhd"><div><div class="mtitle" id="modal-new-title">✦ NEW PROSPECT</div><div class="msub">Fill in what you have — nothing required except a name</div></div><button class="mx" onclick="closeModal('modal-new')">✕</button></div>
+  <div class="mbd">
+    <!-- AI PARSER -->
+    <div class="parser-box" id="parser-box" onclick="togglePasteArea()">
+      <div class="parser-ttl">✦ AI AUTO-FILL</div>
+      <div class="parser-sub">Paste a screenshot, Meta lead, or text message — Claude fills the form instantly</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+        <label style="background:var(--blue);color:white;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:5px">
+          🖼 Upload Screenshot <input type="file" accept="image/*" style="display:none" onchange="parseImage(this)" />
+        </label>
+        <button onclick="event.stopPropagation();triggerClipboardPaste()" style="background:var(--teal,#448694);color:white;border:none;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer" id="paste-img-btn">⌘V Paste Image</button>
+        <button onclick="event.stopPropagation();togglePasteArea()" style="background:var(--off);color:var(--dark);border:1.5px solid #dde2e4;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer">📋 Paste Text</button>
+      </div>
+      <div style="margin-top:6px;font-size:10px;color:#555;text-align:center;" id="paste-hint">Tip: Copy a screenshot then click <b>⌘V Paste Image</b> — or press <b>⌘V</b> anywhere in this modal</div>
+      <textarea class="parser-paste" id="parser-paste" placeholder="Paste anything here — Meta lead details, a text from a client, forwarded email, notes... Claude will extract name, phone, email, loan type automatically." onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter')parseText()"></textarea>
+      <div style="display:none;justify-content:flex-end;gap:6px;margin-top:6px" id="parser-btn-row">
+        <button class="btn-s" onclick="event.stopPropagation();clearParser()" style="padding:5px 12px;font-size:11px">Clear</button>
+        <button class="btn-p" onclick="event.stopPropagation();parseText()" style="padding:5px 14px;font-size:11px">✦ Extract Info →</button>
+      </div>
+      <div class="parser-loading" id="parser-loading"><div class="parser-spinner"></div><span style="font-size:12px;font-weight:700;color:var(--blue)">Claude is reading...</span></div>
+    </div>
+    <!-- DUPLICATE WARNING -->
+    <div class="dup-warning" id="dup-warning">
+      <div class="dup-warning-ttl">⚠ Possible Duplicate Found</div>
+      <div id="dup-list"></div>
+      <div style="font-size:11px;color:#555;margin-top:6px">Click a match to open it, or continue saving as a new contact below.</div>
+    </div>
+    <div class="frow">
+      <div class="ff"><label>First Name</label><input id="np-fname" placeholder="First" /></div>
+      <div class="ff"><label>Last Name</label><input id="np-lname" placeholder="Last" /></div>
+    </div>
+    <div class="frow">
+      <div class="ff"><label>Phone</label><input id="np-phone" placeholder="(541) 000-0000" /></div>
+      <div class="ff"><label>Email</label><input id="np-email" placeholder="email@example.com" /></div>
+    </div>
+    <div class="frow">
+      <div class="ff"><label>Phone 2 <span style="font-weight:400;color:#555">(optional)</span></label><input id="np-phone2" placeholder="Co-borrower or alternate" /></div>
+      <div class="ff"><label>Email 2 <span style="font-weight:400;color:#555">(optional)</span></label><input id="np-email2" placeholder="Co-borrower or alternate" /></div>
+    </div>
+
+    <span class="fsec">Co-Borrower <span style="font-weight:400;color:#555;font-size:10px">(optional — leave blank if single borrower)</span></span>
+    <div class="frow">
+      <div class="ff"><label>Co-Borrower First Name</label><input id="np-cofname" placeholder="First" /></div>
+      <div class="ff"><label>Co-Borrower Last Name</label><input id="np-colname" placeholder="Last (if different)" /></div>
+    </div>
+
+    <div class="frow">
+      <div class="ff"><label>Est. Purchase Price</label><input id="np-price" placeholder="$000,000" /></div>
+      <div class="ff"><label>Credit Score (Est.)</label><input id="np-credit" placeholder="720+" /></div>
+    </div>
+
+    <span class="fsec">Loan Type</span>
+    <div class="loan-type-row">
+      <div class="lt-btn on" id="lt-purchase" onclick="setLoanType('purchase')">🏠 Purchase</div>
+      <div class="lt-btn" id="lt-refi" onclick="setLoanType('refi')">🔄 Refinance</div>
+      <div class="lt-btn" id="lt-other" onclick="setLoanType('other')">📋 Other</div>
+    </div>
+
+    <span class="fsec">Office <span style="color:var(--red);font-size:11px">* Required</span></span>
+    <div class="office-pick" id="office-pick">
+      <button class="office-btn bmb" id="ob-bmb" onclick="setOffice('bmb')">🏔 BEND<br><span style="font-size:10px;font-weight:700;opacity:.8">Bend Mortgage Brokers</span></button>
+      <button class="office-btn emb" id="ob-emb" onclick="setOffice('emb')">🌲 EUGENE<br><span style="font-size:10px;font-weight:700;opacity:.8">Eugene Mortgage Brokers</span></button>
+    </div>
+    <span class="fsec">Add To</span>
+    <div class="dest-grid">
+      <div class="dest-btn on" id="dest-prospects" onclick="setDest('prospects')">
+        <div class="dest-icon">🏠</div><div class="dest-label">Prospects Board</div>
+      </div>
+      <div class="dest-btn" id="dest-leads" onclick="setDest('leads')">
+        <div class="dest-icon">⚡</div><div class="dest-label">Leads Board</div>
+      </div>
+    </div>
+    <div class="col-picker show" id="col-picker">
+      <label style="font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1.2px;display:block;margin-bottom:5px;">Column</label>
+      <select id="np-column">
+        <option value="col_faas">⭐ FAAS Team</option>
+        <option value="col_gen1" selected>🏠 Prospects (General)</option>
+        <option value="col_gen2">🏠 Prospects (General 2)</option>
+        <option value="col_gen3">🏠 Prospects (General 3)</option>
+        <option value="col_gen4">🏠 Prospects (General 4)</option>
+        <option value="col_meta">📱 Meta Prospects</option>
+      </select>
+    </div>
+
+    <span class="fsec">Lead Source</span>
+    <div class="src-grid">
+      <div class="src-cb" onclick="toggleSrc(this,'Realtor')"><input type="checkbox" /><span>🏠 Realtor</span></div>
+      <div class="src-cb" onclick="toggleSrc(this,'Referral',true)"><input type="checkbox" /><span>🤝 Referral</span></div>
+      <div class="src-other-wrap" id="src-other-wrap"><input id="src-other-detail" placeholder="Who referred them and from where?" /></div>
+      <div class="src-cb" onclick="toggleSrc(this,'Meta Lead')"><input type="checkbox" /><span>📱 Meta Lead</span></div>
+      <div class="src-cb" onclick="toggleSrc(this,'Call In')"><input type="checkbox" /><span>📞 Call In</span></div>
+      <div class="src-cb" onclick="toggleSrc(this,'Website')"><input type="checkbox" /><span>🌐 Website</span></div>
+      <div class="src-cb" onclick="toggleSrc(this,'Other',true)"><input type="checkbox" /><span>📋 Other</span></div>
+    </div>
+
+    <span class="fsec">Follow-Up Reminder</span>
+    <div class="fu-box">
+      <div class="fu-box-ttl">When should we flag this for follow-up?</div>
+      <div class="fu-opts">
+        <div class="fu-opt on" id="fu-days-opt" onclick="setFuOpt('days')"><input type="radio" name="fu-new" checked /><label>In <input class="fu-days" id="fu-days-val" value="2" onclick="event.stopPropagation()" /> business days</label></div>
+        <div class="fu-opt" id="fu-date-opt" onclick="setFuOpt('date')"><input type="radio" name="fu-new" /><label>On date: <input class="fu-date" id="fu-date-val" type="date" onclick="event.stopPropagation()" /></label></div>
+      </div>
+    </div>
+
+    <div class="frow"><div class="ff"><label>Quick Note</label><textarea id="np-note" placeholder="Anything important to remember about this prospect..." style="min-height:70px;resize:vertical;"></textarea></div></div>
+  </div>
+  <div class="mft">
+    <button class="btn-s" onclick="closeModal('modal-new')">Cancel</button>
+    <button class="btn-p" onclick="saveNewProspect()">💾 Save Prospect</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════
+     MODAL: CONTACT LOG
+═══════════════════════════ -->
+<div class="overlay" id="modal-contact">
+<div class="modal sm">
+  <div class="mhd">
+    <div><div class="mtitle" id="contact-modal-title">LOG CONTACT</div><div class="msub" id="contact-modal-sub">Loading...</div></div>
+    <button class="mx" onclick="closeModal('modal-contact')">✕</button>
+  </div>
+  <div class="mbd">
+    <div class="ct-types">
+      <div class="ct-type on" id="ct-call" onclick="setCt('call')"><div class="ci">📞</div><div class="cl">Phone Call</div></div>
+      <div class="ct-type" id="ct-email" onclick="setCt('email')"><div class="ci">📧</div><div class="cl">Email</div></div>
+      <div class="ct-type" id="ct-text" onclick="setCt('text')"><div class="ci">💬</div><div class="cl">Text</div></div>
+      <div class="ct-type" id="ct-note" onclick="setCt('note')"><div class="ci">📝</div><div class="cl">Note</div></div>
+      <div class="ct-ign" id="ct-ignore-btn" onclick="toggleIgnore()">— Ignore &nbsp;<span style="font-size:10px;color:#777">(clears flag · optional note below)</span></div>
+    </div>
+    <div class="ign-wrap" id="ign-wrap">
+      <div class="ign-lbl">Why clearing without action? (optional)</div>
+      <textarea id="ign-note" style="width:100%;border:1.5px solid #e0e4e6;border-radius:8px;padding:9px 12px;font-family:inherit;font-size:13px;color:var(--dark);background:var(--off);outline:none;min-height:65px;resize:vertical;" placeholder="e.g. Still waiting on lease to end. No action needed yet."></textarea>
+    </div>
+    <div class="frow" style="margin-top:10px">
+      <div class="ff"><label>Contact Note</label><textarea id="contact-note" placeholder="What happened on this contact?" style="min-height:80px;resize:vertical;"></textarea></div>
+    </div>
+    <span class="fsec">Reset Follow-Up Reminder</span>
+    <div class="fu-box">
+      <div class="fu-opts">
+        <div class="fu-opt on" id="cfu-days-opt" onclick="setCfuOpt('days')"><input type="radio" name="fu-contact" checked /><label>Default: <input class="fu-days" id="cfu-days-val" value="2" onclick="event.stopPropagation()" /> business days</label></div>
+        <div class="fu-opt" id="cfu-date-opt" onclick="setCfuOpt('date')"><input type="radio" name="fu-contact" /><label>Specific date: <input class="fu-date" id="cfu-date-val" type="date" onclick="event.stopPropagation()" /></label></div>
+      </div>
+    </div>
+  </div>
+  <div class="mft">
+    <button class="btn-s" onclick="closeModal('modal-contact')">Cancel</button>
+    <button class="btn-g" onclick="saveContactLog()">✓ Log &amp; Clear</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════
+     MODAL: CARD DETAIL
+═══════════════════════════ -->
+<div class="overlay" id="modal-card">
+<div class="modal wide">
+  <div class="mhd">
+    <div>
+      <div class="mtitle" id="card-modal-title">CONTACT NAME</div>
+      <div class="msub" id="card-modal-sub">Loading...</div>
+    </div>
+    <button class="mx" onclick="closeModal('modal-card')">✕</button>
+  </div>
+  <div class="mbd" id="card-modal-body">
+    <!-- Populated by JS -->
+  </div>
+  <div class="mft" id="card-modal-footer">
+    <button class="btn-s" onclick="closeModal('modal-card')">Close</button>
+    <button class="btn-p" id="btn-log-from-card" onclick="openContactLogFromCard()">+ Log Contact</button>
+    <button class="btn-d" id="btn-mark-dead" onclick="markContactDead()">💀 Mark Dead</button>
+  </div>
+</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let supabase = null
+let currentUser = null
+let currentBoard = 'leads'
+let currentTeamView = 'my'
+let viewingTeam = 'shad'
+let contacts = []
+let refreshTimer = null
+let activeContactId = null
+let activeLogType = 'call'
+let activeIgnore = false
+let activeLoanType = 'purchase'
+let activeDest = 'prospects'
+let activeSources = []
+let fuMode = 'days'
+let activeOffice = '' // 'bmb' | 'emb' — required, no default
+let cfuMode = 'days'
+let isEditing = false
+
+// column → board map
+const COL_BOARD = {
+  col_faas:'prospects', col_gen1:'prospects', col_gen2:'prospects',
+  col_gen3:'prospects', col_gen4:'prospects', col_meta:'prospects',
+  lead_prospect:'leads', lead_docs:'leads', lead_ready:'leads',
+  lead_approved:'leads', lead_inprocess:'leads',
+  dead_prospect:'dead', dead_denied:'dead',
+  closed:'closed'
+}
+
+// Default column labels — overridden by column_labels table from Supabase
+let COL_LABELS = {
+  col_faas:'⭐ FAAS Team', col_gen1:'🏠 Prospects', col_gen2:'🏠 Prospects',
+  col_gen3:'🏠 Prospects', col_gen4:'🏠 Prospects', col_meta:'📱 Meta Prospects',
+  lead_prospect:'👤 Prospect', lead_docs:'📂 Getting Docs',
+  lead_ready:'✅ Ready — Pre-Approve / Refi', lead_approved:'🏆 Pre-Approved',
+  lead_inprocess:'📋 In Process', dead_prospect:'💀 Dead Prospects',
+  dead_denied:'❌ Denied Pre-Approvals', closed:'✅ Closed'
+}
+
+async function loadColumnLabels() {
+  if (!supabase) return
+  try {
+    const { data, error } = await supabase.from('column_labels').select('*')
+    if (error) { console.error('Failed to load column labels:', error); return }
+    if (data && data.length > 0) {
+      data.forEach(row => {
+        if (row.column_id && row.label) {
+          COL_LABELS[row.column_id] = row.label
+        }
+      })
+      console.log('Column labels loaded from DB ✓', Object.keys(COL_LABELS).length, 'labels')
+    }
+  } catch (e) { console.error('Error loading column labels:', e) }
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+async function init() {
+  const cfg = await loadConfigFromDisk()
+  if (!cfg || !cfg.supabase_url) {
+    document.getElementById('loading').classList.add('hidden')
+    document.getElementById('setup-screen').classList.add('show')
+    return
+  }
+
+  try {
+    // Load Supabase from local UMD bundle
+    if (window.supabase && window.supabase.createClient) {
+      supabase = window.supabase.createClient(cfg.supabase_url, cfg.supabase_anon_key)
+      console.log('Supabase initialized ✓')
+    } else {
+      console.error('Supabase UMD not loaded')
+    }
+
+    currentUser = {
+      name: cfg.user_name || 'Matt',
+      initials: cfg.user_initials || 'M',
+      role: cfg.user_role || 'admin',
+      team: cfg.user_team || 'matt'
+    }
+
+    updateNavUser()
+
+    // Fix paste button labels for Windows (Ctrl+V instead of ⌘V)
+    const isMac = window.electronAPI?.platform === 'darwin'
+    if (!isMac) {
+      const pasteBtn = document.getElementById('paste-img-btn')
+      if (pasteBtn) pasteBtn.textContent = 'Ctrl+V Paste Image'
+      const pasteHint = document.getElementById('paste-hint')
+      if (pasteHint) pasteHint.innerHTML = 'Tip: Copy a screenshot then click <b>Ctrl+V Paste Image</b> — or press <b>Ctrl+V</b> anywhere in this modal'
+    }
+
+    // Load column labels from DB before rendering
+    await loadColumnLabels()
+
+    // Show app immediately — don't wait for data
+    document.getElementById('loading').classList.add('hidden')
+
+    // Set initial board to leads
+    goBoard('leads', document.getElementById('nav-leads'))
+
+    // Load data in background
+    loadContacts()
+
+    // Start auto-refresh
+    refreshTimer = setInterval(refreshData, CONFIG.REFRESH_INTERVAL_MS || 120000)
+    
+    // Start Unite SMS poller
+    startUnitePoller()
+    // Start Gmail email poller
+    startGmailPoller()
+
+    // Realtime subscription
+    if (supabase) setupRealtime()
+
+    // Schedule auto backup
+    scheduleAutoBackup()
+
+  } catch(e) {
+    console.error('Init error:', e)
+    loadDemoData()
+    document.getElementById('loading').classList.add('hidden')
+    showToast('Running in demo mode — configure Supabase to go live', 'blue')
+  }
+}
+
+// Config cache - loaded once from file
+let _configCache = null
+
+function loadConfig() {
+  return _configCache
+}
+
+async function loadConfigFromDisk() {
+  try {
+    if (window.electronAPI?.settingsLoad) {
+      const cfg = await window.electronAPI.settingsLoad()
+      if (cfg) {
+        _configCache = cfg
+        // Also mirror to localStorage as backup
+        localStorage.setItem('emb_config', JSON.stringify(cfg))
+        return cfg
+      }
+    }
+    // Fallback to localStorage
+    const s = localStorage.getItem('emb_config')
+    if (s) {
+      _configCache = JSON.parse(s)
+      return _configCache
+    }
+  } catch(e) { console.error('Config load error:', e) }
+  return null
+}
+
+function saveConfig(cfg) {
+  _configCache = cfg
+  localStorage.setItem('emb_config', JSON.stringify(cfg))
+  if (window.electronAPI?.settingsSave) {
+    window.electronAPI.settingsSave(cfg)
+  }
+}
+
+function saveSetup() {
+  const cfg = {
+    supabase_url: document.getElementById('setup-sb-url').value.trim(),
+    supabase_anon_key: document.getElementById('setup-sb-key').value.trim(),
+    claude_api_key: document.getElementById('setup-claude-key').value.trim(),
+    unit_api_key: document.getElementById('setup-unite-key').value.trim(),
+    unite_client_id: document.getElementById('setup-unite-key').value.trim(),
+    unite_client_secret: document.getElementById('setup-unit-secret')?.value?.trim() || '',
+    unit_phone: document.getElementById('setup-unite-phone').value.trim(),
+    user_name: document.getElementById('setup-name').value.trim() || 'Matt',
+    user_role: document.getElementById('setup-role').value,
+    user_team: document.getElementById('setup-team').value,
+    user_initials: document.getElementById('setup-initials').value.trim().toUpperCase() || 'M'
+  }
+  saveConfig(cfg)
+  document.getElementById('setup-screen').classList.remove('show')
+  init()
+}
+
+function updateNavUser() {
+  if (!currentUser) return
+  document.getElementById('nav-name').textContent = currentUser.name
+  const adminBtn = document.getElementById('admin-btn')
+  if (adminBtn) adminBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none'
+  const av = document.getElementById('nav-avatar')
+  av.textContent = currentUser.initials
+  av.className = 'nav-user-av ' + (currentUser.team || 'matt')
+}
+
+// ═══════════════════════════════════════════
+//  DATA LOADING
+// ═══════════════════════════════════════════
+async function loadContacts() {
+  setSyncStatus('syncing', 'Syncing...')
+  try {
+    if (!supabase) {
+      console.warn('Supabase not initialized yet, attempting to reinit...')
+      const cfg = loadConfig()
+      if (cfg && cfg.supabase_url && cfg.supabase_anon_key) {
+        if (window.supabase && window.supabase.createClient) {
+          supabase = window.supabase.createClient(cfg.supabase_url, cfg.supabase_anon_key)
+          console.log('Supabase reinitialized successfully')
+        }
+      }
+    }
+
+    if (supabase) {
+      const team = currentTeamView === 'my' ? (currentUser?.team || 'matt') : viewingTeam
+      console.log('Loading contacts for team:', team)
+      
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*, notes(*), contact_log(*)')
+        .eq('team', team)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
+      console.log('Loaded', (data||[]).length, 'contacts')
+      contacts = data || []
+    } else {
+      console.warn('Running in demo mode - Supabase unavailable')
+    }
+    renderAllBoards()
+    setSyncStatus('ok', 'Synced ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}))
+  } catch(e) {
+    console.error('Load error:', e)
+    setSyncStatus('error', 'Sync error')
+    showToast('Could not load data — check your connection', 'red')
+  }
+}
+
+async function refreshData() {
+  await loadContacts()
+}
+
+function setupRealtime() {
+  if (!supabase) return
+  supabase.channel('contacts_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts' }, () => {
+      loadContacts()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'contact_log' }, () => {
+      loadContacts()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => {
+      loadContacts()
+    })
+    .subscribe()
+}
+
+function setSyncStatus(state, msg) {
+  const dot = document.getElementById('sync-dot')
+  const lbl = document.getElementById('sync-lbl')
+  if (!dot || !lbl) return
+  dot.className = 'sync-dot' + (state === 'syncing' ? ' syncing' : state === 'error' ? ' error' : '')
+  lbl.textContent = state === 'syncing' ? '↻ Syncing...' : (state === 'error' ? '⚠ Sync Error' : '↻ Sync')
+}
+
+// ═══════════════════════════════════════════
+//  DEMO DATA
+// ═══════════════════════════════════════════
+function loadDemoData() {
+  contacts = [
+    { id:'1', first_name:'Jennifer', last_name:'Harmon', phone:'(541) 774-1111', email:'jen@email.com', board:'prospects', column_id:'col_gen1', loan_type:'purchase', source:'Referral', source_detail:'Dave K.', followup_date: daysBefore(new Date(), -5), notes:[], contact_log:[], created_by_name:'Matt', created_at: new Date(Date.now()-86400000*3).toISOString() },
+    { id:'2', first_name:'Marcus', last_name:'Webb', phone:'(541) 774-2222', email:'marcus@email.com', board:'prospects', column_id:'col_meta', loan_type:'purchase', source:'Meta Lead', followup_date: new Date().toISOString().split('T')[0], notes:[], contact_log:[], created_by_name:'Chandler', created_at: new Date(Date.now()-86400000*1).toISOString() },
+    { id:'3', first_name:'Tonya', last_name:'Richardson', phone:'(541) 774-3333', email:'tonya@email.com', board:'prospects', column_id:'col_faas', loan_type:'purchase', source:'Referral', followup_date: daysBefore(new Date(), 2), notes:[{content:'Offer accepted on 1842 River Rd',author_name:'Chandler',created_at:new Date().toISOString()}], contact_log:[{log_type:'call',user_name:'Chandler',note:'Confirmed offer accepted',timestamp:new Date().toISOString()}], created_by_name:'Chandler', created_at: new Date().toISOString() },
+    { id:'4', first_name:'Derek', last_name:'& Amy Patel', phone:'(541) 774-4444', email:'patel@email.com', board:'leads', column_id:'lead_docs', loan_type:'purchase', source:'Realtor', followup_date: daysBefore(new Date(), 2), notes:[], contact_log:[], created_by_name:'Matt', created_at: new Date(Date.now()-86400000*2).toISOString() },
+    { id:'5', first_name:'Lisa', last_name:'& James Foley', phone:'(541) 774-5555', email:'foley@email.com', board:'leads', column_id:'lead_inprocess', loan_type:'purchase', source:'Referral', close_date:'2026-05-15', followup_date: daysBefore(new Date(), 3), notes:[], contact_log:[], created_by_name:'Brian', created_at: new Date(Date.now()-86400000*10).toISOString() },
+    { id:'6', first_name:'Maria', last_name:'Santos', phone:'(541) 774-6666', email:'maria@email.com', board:'closed', column_id:'closed', loan_type:'purchase', source:'Website', followup_date:null, notes:[], contact_log:[], created_by_name:'Chandler', created_at: new Date(Date.now()-86400000*20).toISOString() },
+    { id:'7', first_name:'Bob', last_name:'Vance', phone:'(541) 774-7777', email:'bob@email.com', board:'dead', column_id:'dead_prospect', loan_type:'purchase', source:'Other', dead_reason:'Went with another lender', followup_date:null, notes:[], contact_log:[], created_by_name:'Matt', created_at: new Date(Date.now()-86400000*30).toISOString() },
+    { id:'8', first_name:'Kelsey', last_name:'Huang', phone:'(541) 774-8888', email:'kelsey@email.com', board:'prospects', column_id:'col_gen1', loan_type:'refi', source:'Referral', source_detail:'Agent Brenda R.', followup_date: daysBefore(new Date(), -4), notes:[], contact_log:[], created_by_name:'Matt', created_at: new Date(Date.now()-86400000*5).toISOString() },
+  ]
+  renderAllBoards()
+  setSyncStatus('ok', 'Demo Mode')
+}
+
+function daysBefore(d, n) {
+  const date = new Date(d)
+  date.setDate(date.getDate() - n)
+  return date.toISOString().split('T')[0]
+}
+
+// ═══════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════
+function renderAllBoards() {
+  const cols = ['faas','gen1','gen2','gen3','gen4','meta',
+                'lead-prospect','lead-docs','lead-ready','lead-approved','lead-inprocess',
+                'dead-prospect','dead-denied']
+
+  const colIdMap = {
+    'faas':'col_faas','gen1':'col_gen1','gen2':'col_gen2','gen3':'col_gen3','gen4':'col_gen4','meta':'col_meta',
+    'lead-prospect':'lead_prospect','lead-docs':'lead_docs','lead-ready':'lead_ready',
+    'lead-approved':'lead_approved','lead-inprocess':'lead_inprocess',
+    'dead-prospect':'dead_prospect','dead-denied':'dead_denied'
+  }
+
+  cols.forEach(col => {
+    const colId = colIdMap[col]
+    const el = document.getElementById('cards-' + col)
+    const pill = document.getElementById('pill-' + col)
+    if (!el) return
+
+    const colContacts = contacts.filter(c => c.column_id === colId)
+      .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+
+    if (pill) pill.textContent = colContacts.length
+    el.innerHTML = colContacts.length === 0
+      ? '<div class="col-empty">No prospects yet</div>'
+      : colContacts.map(c => renderCard(c, col === 'lead-inprocess')).join('')
+  })
+
+  // Closed list
+  const closedEl = document.getElementById('closed-list')
+  const closedContacts = contacts.filter(c => c.board === 'closed')
+  closedEl.innerHTML = closedContacts.length === 0
+    ? '<div style="text-align:center;color:#777;font-size:12px;font-weight:700;padding:30px">No closed loans yet</div>'
+    : closedContacts.map(c => `
+      <div class="list-row" style="--lc:var(--blue);grid-template-columns:1fr 1fr 120px 130px 90px" onclick="openCard('${c.id}')">
+        <div><div style="font-weight:900;font-size:13px">${displayName(c)}</div><div style="font-size:10px;color:#555">${c.created_by_name||''}</div></div>
+        <div style="font-size:12px;font-weight:700">${c.loan_type==='refi'?'Refinance':'Purchase'}</div>
+        <div style="font-size:13px;font-weight:900;color:var(--blue)">${c.est_price ? '$'+Number(c.est_price).toLocaleString() : '—'}</div>
+        <div style="font-size:12px;font-weight:700">${c.close_date ? formatDate(c.close_date) : '—'}</div>
+        <button class="btn-sm btn-edit-sm" onclick="event.stopPropagation();openCard('${c.id}')">View</button>
+      </div>`).join('')
+
+  // Update badges
+  document.getElementById('badge-prospects').textContent = contacts.filter(c=>c.board==='prospects').length
+  document.getElementById('badge-leads').textContent = contacts.filter(c=>c.board==='leads').length
+}
+
+function renderCard(c, isInProcess) {
+  const name = displayName(c)
+  const loClass = (c.created_by_name||'').toLowerCase()
+  const loInitial = (c.created_by_name||'?').charAt(0).toUpperCase()
+
+  // Follow-up status
+  const fuDate = c.followup_date ? new Date(c.followup_date) : null
+  const today = new Date(); today.setHours(0,0,0,0)
+  let fuClass = '', fuText = ''
+  if (fuDate) {
+    const fd = new Date(fuDate); fd.setHours(0,0,0,0)
+    const diff = Math.round((fd - today) / 86400000)
+    if (diff < 0) { fuClass = 'over'; fuText = `<span class="pulse"></span>&nbsp;${Math.abs(diff)} day${Math.abs(diff)!==1?'s':''} overdue` }
+    else if (diff === 0) { fuClass = 'due'; fuText = '⏰ Follow-up due today' }
+    else { fuClass = 'ok'; fuText = `✓ Follow-up in ${diff} day${diff!==1?'s':''}` }
+  }
+
+  const needsResponse = c.needs_response === true
+  const cardClass = (needsResponse && fuClass === 'over') ? 'hybrid-overdue' : needsResponse ? 'needs-response' : fuClass === 'over' ? 'overdue' : fuClass === 'due' ? 'duetoday' : ''
+  const loColor = loClass === 'matt' ? 'var(--matt)' : loClass === 'chandler' ? 'var(--chandler)' : loClass === 'brian' ? 'var(--brian)' : 'var(--blue)'
+  const srcLabel = getSrcLabel(c.source)
+  const officeBadge = c.office ? `<span class="office-badge ${c.office}">${c.office.toUpperCase()}</span>` : '<span class="office-badge" style="background:#ffecec;color:var(--red);border:1.5px solid #ffcdd2">⚠ NO OFFICE</span>'
+  
+  // Last contact info
+  const lastContact = (c.contact_log||[]).slice().sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]
+  const lastContactStr = lastContact ? ` · Last: ${logTypeName(lastContact.log_type)} ${formatRelativeTime(lastContact.timestamp)}` : ''
+
+  // Close dates (In Process only)
+  let closeDatesHtml = ''
+  if (isInProcess && c.close_date) {
+    const cd = new Date(c.close_date)
+    const cdDate = addBizDays(cd, -3)
+    const fundDate = addBizDays(cd, 4)
+    const daysToClose = Math.round((cd - today) / 86400000)
+    const closeClass = daysToClose <= 3 ? 'urgent' : daysToClose <= 7 ? 'soon' : ''
+    closeDatesHtml = `
+      <div class="close-dates">
+        <div class="cd-row"><span class="cd-label">Close Date</span><span class="cd-value ${closeClass}">${formatDate(c.close_date)}</span></div>
+        <div class="cd-row"><span class="cd-label">Last CD</span><span class="cd-value">${formatDate(cdDate)}</span></div>
+        <div class="cd-row"><span class="cd-label">Funding</span><span class="cd-value">${formatDate(fundDate)}</span></div>
+      </div>`
+  }
+
+  // Latest note preview (from manual log types only — email/text have their own sections)
+  const noteEntries = (c.contact_log||[]).filter(l => l.note && l.note.trim() && (l.log_type === 'note' || l.log_type === 'call' || l.log_type === 'ignore'))
+  const latestNote = noteEntries.length > 0
+    ? `<div class="card-note">${escHtml(noteEntries[noteEntries.length-1].note)}</div>` : ''
+
+  const isProspect = c.board === 'prospects'
+  const isDead = c.board === 'dead'
+
+  return `
+<div class="card ${cardClass}" style="--lc:${loColor}" onclick="openCard('${c.id}')">
+  <div class="card-top">
+    <div>
+      <div class="card-name">${escHtml(name)}</div>
+      <div class="card-src">${srcLabel}</div>
+    </div>
+    <div class="lo-dot ${loClass}" title="${c.created_by_name||''}">${loInitial}</div>
+  </div>
+  ${srcLabel ? `<span class="src-tag">${srcLabel}</span>` : ''}
+  ${officeBadge}
+  ${needsResponse
+      ? `<div class="fu-tag needs-resp"><span class="pulse"></span>&nbsp;↩ RESPONDED — REPLY NOW</div>`
+      : fuDate ? `<div class="fu-tag ${fuClass}">${fuText}${lastContactStr}</div>`
+               : (!lastContact ? '' : `<div class="fu-tag ok" style="background:rgba(97,192,140,.1);color:var(--green)">${lastContactStr.trim()}</div>`)
+  }
+  ${closeDatesHtml}
+  ${latestNote}
+  <div class="qn-row" onclick="event.stopPropagation()">
+    <input class="qn-input" placeholder="Quick note..." id="qn-${c.id}" />
+    <button class="btn-qn" onclick="saveQuickNote('${c.id}')">+ Note</button>
+  </div>
+  <div class="card-btns">
+    <button class="btn-sm btn-log-sm" onclick="event.stopPropagation();openContactLog('${c.id}')">✓ Log Contact</button>
+    <button class="btn-sm btn-move-sm" onclick="event.stopPropagation();openMoveCard('${c.id}')">Move →</button>
+    ${isProspect ? `<button class="btn-sm btn-leads-sm" onclick="event.stopPropagation();moveToLeads('${c.id}')">→ Leads</button>` : ''}
+    ${isDead ? `<button class="btn-sm btn-leads-sm" onclick="event.stopPropagation();restoreContact('${c.id}')">↩ Restore</button>` : ''}
+    ${c.email ? `<button class="btn-sm" style="background:linear-gradient(135deg,#ea4335,#c5221f);color:white;font-size:10px;font-weight:900;padding:4px 9px;border-radius:6px;border:none;cursor:pointer;" onclick="event.stopPropagation();openCard('${c.id}')">📧 Email</button>` : ''}
+  </div>
+</div>`
+}
+
+// ═══════════════════════════════════════════
+//  CARD DETAIL MODAL
+// ═══════════════════════════════════════════
+function openCard(id) {
+  const c = contacts.find(x=>x.id===id)
+  if (!c) return
+  activeContactId = id
+  isEditing = false
+
+  const name = displayName(c)
+  document.getElementById('card-modal-title').textContent = name.toUpperCase()
+  document.getElementById('card-modal-sub').textContent =
+    `${COL_LABELS[c.column_id]||'Unknown'} · Added ${formatDate(c.created_at)} · ${c.created_by_name||''}`
+
+  // chips
+  const fuDate = c.followup_date ? new Date(c.followup_date) : null
+  const today = new Date(); today.setHours(0,0,0,0)
+  // Yellow needs-response chip (highest priority)
+  const needsResp = c.needs_response === true
+  let fuChip = ''
+  if (needsResp) {
+    fuChip = `<span class="cd-chip" style="background:#fff9c4;color:#b8860b;border:1px solid #d4a500"><span class="pulse" style="background:#b8860b;width:5px;height:5px;border-radius:50%;display:inline-block;margin-right:3px"></span>↩ Responded — Reply Now</span>`
+  } else if (fuDate) {
+    const fd = new Date(fuDate); fd.setHours(0,0,0,0)
+    const diff = Math.round((fd - today)/86400000)
+    if (diff < 0) fuChip = `<span class="cd-chip fu-over">⚠ ${Math.abs(diff)}d overdue</span>`
+    else if (diff === 0) fuChip = `<span class="cd-chip fu-due">⏰ Due today</span>`
+    else fuChip = `<span class="cd-chip fu-ok">✓ ${diff}d</span>`
+  }
+
+  const loanChip = c.loan_type === 'refi'
+    ? `<span class="cd-chip refi">🔄 Refi</span>`
+    : c.loan_type === 'other' ? `<span class="cd-chip">📋 Other</span>`
+    : `<span class="cd-chip purchase">🏠 Purchase</span>`
+
+  // contact log
+  const sortedLog = (c.contact_log||[]).slice().sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))
+  const logHtml = sortedLog.slice(0,12).map((l)=>`
+    <div class="litem">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="lbadge ${l.log_type}">${logTypeIcon(l.log_type)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:900;color:var(--dark)">${logTypeName(l.log_type)}</span>
+            <span style="font-size:10px;color:#555">·</span>
+            <span style="font-size:10px;color:#555;font-weight:700">${formatDateTime(l.timestamp)}</span>
+            ${l.user_name ? `<span style="font-size:10px;color:#555">·</span><span style="font-size:10px;color:var(--teal);font-weight:700">${l.user_name}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>`
+  ).join('') || '<div style="color:#777;font-size:11px;padding:8px 0">No contact logs yet</div>'
+
+  // notes — merge legacy notes table + contact_log notes, sorted oldest→newest
+  const contactLogNotes = (c.contact_log||[]).filter(l => l.note && l.note.trim() && (l.log_type === 'note' || l.log_type === 'call' || l.log_type === 'ignore')).map(l => ({
+    content: l.log_type !== 'note' ? `[${l.log_type.toUpperCase()}] ${l.note}` : l.note,
+    author_name: l.user_name, created_at: l.timestamp
+  }))
+  const allNotes = [
+    ...(c.notes||[]),
+    ...contactLogNotes
+  ].sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
+  const notesHtml = allNotes.map(n=>`
+    <div class="nentry">
+      <div class="neh"><span class="neh-dt">${formatDateTime(n.created_at)}</span><span class="neh-au">${n.author_name||''}</span></div>
+      <div class="ne-txt">${escHtml(n.content)}</div>
+    </div>`).join('') || '<div style="color:#777;font-size:11px;padding:8px 0">No notes yet</div>'
+
+  // close dates
+  let closeDatesSection = ''
+  if (c.column_id === 'lead_inprocess') {
+    closeDatesSection = `
+      <div class="fsec">Closing Dates</div>
+      <div class="fu-box" style="margin-bottom:12px">
+        <div class="frow" style="margin-bottom:8px">
+          <div class="ff"><label>Close Date</label><input type="date" id="cd-close-date" value="${c.close_date||''}" oninput="recalcDates(this.value)" /></div>
+          <div class="ff"><label>Last Day for CD <span style="color:#555">(auto: 3 biz days before)</span></label><input id="cd-cd-date" value="${c.cd_date ? formatDate(c.cd_date) : ''}" readonly style="background:#f8f9fa;color:#555;" /></div>
+        </div>
+        <div class="frow" style="margin-bottom:0">
+          <div class="ff"><label>Funding Date <span style="color:#555">(auto: 4 biz days after close)</span></label><input id="cd-funding-date" value="${c.funding_date ? formatDate(c.funding_date) : ''}" readonly style="background:#f8f9fa;color:#555;" /></div>
+        </div>
+      </div>`
+  }
+
+  document.getElementById('card-modal-body').innerHTML = `
+    <div class="cd-chips">
+      <span class="cd-chip stg">${COL_LABELS[c.column_id]||'Unknown'}</span>
+      ${c.office ? `<span class="office-badge ${c.office}" style="padding:4px 12px;font-size:10px">${c.office.toUpperCase()}</span>` : '<span class="office-badge" style="background:#ffecec;color:var(--red);padding:4px 12px;font-size:10px">⚠ NO OFFICE SET</span>'}
+      <span class="cd-chip lo">${c.created_by_name||'Unknown'}</span>
+      <span class="cd-chip src">${getSrcLabel(c.source)}</span>
+      ${loanChip}${fuChip}
+    </div>
+
+    <div id="card-view-mode">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:10px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1.2px;">Contact Information</span>
+        <button class="btn-sm btn-edit-sm" onclick="toggleCardEdit()" style="margin-left:0">✏️ Edit Info</button>
+      </div>
+      <div class="two-col">
+        <div class="cdf"><label>Phone</label><div class="cdv">${c.phone||'—'}</div></div>
+        <div class="cdf"><label>Email</label><div class="cdv">${c.email||'—'}</div></div>
+        ${c.phone2 ? `<div class="cdf"><label>Phone 2</label><div class="cdv">${c.phone2}</div></div>` : ''}
+        ${c.email2 ? `<div class="cdf"><label>Email 2</label><div class="cdv">${c.email2}</div></div>` : ''}
+        ${c.co_first_name ? `<div class="cdf"><label>Co-Borrower</label><div class="cdv">${escHtml(c.co_first_name)} ${escHtml(c.co_last_name||c.last_name||'')}</div></div>` : ''}
+        <div class="cdf"><label>Purchase Price</label><div class="cdv big">${c.est_price ? '$'+Number(c.est_price).toLocaleString() : '—'}</div></div>
+        <div class="cdf"><label>Loan Type</label><div class="cdv">${c.loan_type==='refi' ? 'Refinance' : c.loan_type==='other' ? 'Other' : 'Purchase'}</div></div>
+        <div class="cdf"><label>Credit (Est.)</label><div class="cdv">${c.credit_score||'—'}</div></div>
+        <div class="cdf"><label>Timeline</label><div class="cdv">${c.timeline||'—'}</div></div>
+        <div class="cdf"><label>Source</label><div class="cdv">${getSrcLabel(c.source)} ${c.source_detail ? '— '+c.source_detail : ''}</div></div>
+        <div class="cdf"><label>Follow-Up Date</label><div class="cdv">${c.followup_date ? formatDate(c.followup_date) : '—'}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        ${c.phone ? `<button class="btn-sm btn-call-sm" onclick="callContact('${c.id}')">📞 Call via Unite</button>` : ''}
+        ${c.phone ? `<button class="btn-sm btn-text-sm" onclick="openUniteForContact('${c.phone}')">💬 Open in Unite</button>` : ''}
+        <button class="btn-sm btn-leads-sm" onclick="openMoveCard('${c.id}')">↔ Move Column</button>
+      </div>
+    </div>
+
+    <div id="card-edit-mode" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:10px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:1.2px;">✏️ Edit Mode</span>
+        <button class="btn-s" onclick="toggleCardEdit()" style="padding:5px 12px;font-size:11px;">Done</button>
+      </div>
+      <div style="margin-bottom:12px">
+        <span style="font-size:9px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1.2px;display:block;margin-bottom:7px">Office</span>
+        <div class="office-pick" style="margin-bottom:0">
+          <button class="office-btn bmb ${c.office==='bmb'?'on':''}" onclick="editSetOffice('bmb','${c.id}')">🏔 BMB — Bend</button>
+          <button class="office-btn emb ${c.office==='emb'?'on':''}" onclick="editSetOffice('emb','${c.id}')">🌲 EMB — Eugene</button>
+        </div>
+      </div>
+      <div class="frow"><div class="ff"><label>First Name</label><input id="edit-fname" value="${escAttr(c.first_name||'')}" /></div><div class="ff"><label>Last Name</label><input id="edit-lname" value="${escAttr(c.last_name||'')}" /></div></div>
+      <div class="frow"><div class="ff"><label>Phone</label><input id="edit-phone" value="${escAttr(c.phone||'')}" /></div><div class="ff"><label>Email</label><input id="edit-email" value="${escAttr(c.email||'')}" /></div></div>
+      <div class="frow"><div class="ff"><label>Phone 2</label><input id="edit-phone2" placeholder="Co-borrower or alternate" value="${escAttr(c.phone2||'')}" /></div><div class="ff"><label>Email 2</label><input id="edit-email2" placeholder="Co-borrower or alternate" value="${escAttr(c.email2||'')}" /></div></div>
+      <span class="fsec">Co-Borrower <span style="font-weight:400;color:#555;font-size:10px">(optional)</span></span>
+      <div class="frow"><div class="ff"><label>Co-Borrower First</label><input id="edit-cofname" value="${escAttr(c.co_first_name||'')}" /></div><div class="ff"><label>Co-Borrower Last</label><input id="edit-colname" placeholder="If different from primary" value="${escAttr(c.co_last_name||'')}" /></div></div>
+      <div class="frow"><div class="ff"><label>Est. Price</label><input id="edit-price" value="${c.est_price||''}" /></div><div class="ff"><label>Credit Score</label><input id="edit-credit" value="${escAttr(c.credit_score||'')}" /></div></div>
+      <div class="frow"><div class="ff"><label>Timeline</label><input id="edit-timeline" value="${escAttr(c.timeline||'')}" /></div></div>
+      <span class="fsec">Loan Type</span>
+      <div class="loan-type-row">
+        <div class="lt-btn ${c.loan_type==='purchase'||(!c.loan_type)?'on':''}" id="edit-lt-purchase" onclick="editSetLoanType('purchase')">🏠 Purchase</div>
+        <div class="lt-btn ${c.loan_type==='refi'?'on':''}" id="edit-lt-refi" onclick="editSetLoanType('refi')">🔄 Refinance</div>
+        <div class="lt-btn ${c.loan_type==='other'?'on':''}" id="edit-lt-other" onclick="editSetLoanType('other')">📋 Other</div>
+      </div>
+      <span class="fsec">Follow-Up Reminder</span>
+      <div class="fu-box">
+        <div class="fu-opts">
+          <div class="fu-opt on" id="edit-fu-days-opt" onclick="setEditFuOpt('days')"><input type="radio" name="fu-edit" checked /><label>In <input class="fu-days" id="edit-fu-days" value="2" onclick="event.stopPropagation()" /> business days</label></div>
+          <div class="fu-opt" id="edit-fu-date-opt" onclick="setEditFuOpt('date')"><input type="radio" name="fu-edit" /><label>On date: <input class="fu-date" id="edit-fu-date" type="date" value="${c.followup_date||''}" onclick="event.stopPropagation()" /></label></div>
+        </div>
+      </div>
+      <div class="mft" style="padding:0;margin-top:10px;border:none"><button class="btn-p" onclick="saveCardEdit('${c.id}')">💾 Save Changes</button></div>
+    </div>
+
+    ${closeDatesSection}
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--off)">
+      <button class="btn-p" style="width:100%;margin-bottom:14px;font-size:13px" onclick="openContactLogFromCard()">✓ Log Contact</button>
+    </div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--off)">
+      <div style="font-size:10px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;">Notes <span style="color:var(--green);font-size:9px;">(add only — no accidental deletes)</span></div>
+      ${c.notes_summary ? `
+      <div style="background:linear-gradient(135deg,#f0f7ff,#e8f4ff);border:1.5px solid #bdd9f5;border-radius:10px;padding:12px 14px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:9px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:1px">✦ AI Summary</span>
+          <button onclick="generateNotesSummary('${c.id}')" style="background:transparent;border:1px solid #bdd9f5;color:var(--blue);padding:2px 8px;border-radius:5px;font-family:inherit;font-size:9px;font-weight:700;cursor:pointer">↻ Update</button>
+        </div>
+        <div style="font-size:12px;line-height:1.6;color:#2B3739;white-space:pre-line">${escHtml(c.notes_summary)}</div>
+      </div>` : (allNotes.length > 0 ? `<div style="margin-bottom:10px"><button onclick="generateNotesSummary('${c.id}')" style="background:linear-gradient(135deg,var(--blue),var(--teal));border:none;color:white;padding:6px 14px;border-radius:7px;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer">✦ Generate AI Summary</button></div>` : '')}
+      <div class="frow"><div class="ff"><textarea id="card-new-note" placeholder="Add a note..." style="min-height:70px;resize:vertical;"></textarea></div></div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn-p" onclick="saveNote('${c.id}')">+ Add Note</button>
+        <button onclick="startDictation()" title="Dictate note" style="background:var(--off);border:1.5px solid #e0e4e6;color:#555;padding:6px 12px;border-radius:7px;font-family:inherit;font-size:14px;cursor:pointer">🎤</button>
+      </div>
+      <div style="margin-top:12px;border-top:1px solid var(--off);padding-top:10px">
+        <div class="nlog" id="card-notes">${notesHtml}</div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--off)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-size:10px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1.2px;">📧 Emails</div>
+          <button onclick="refreshGmailForContact('${c.id}')" style="background:transparent;border:1px solid #d0d4d6;color:#555;padding:2px 8px;border-radius:5px;font-family:inherit;font-size:9px;font-weight:700;cursor:pointer" title="Re-fetch last 30 days">↻ Refresh</button>
+        </div>
+        <div style="font-size:9px;font-weight:700;color:#555;text-align:right">${[c.email,c.email2].filter(Boolean).map(e=>escHtml(e)).join(' · ') || 'No email on file'}</div>
+      </div>
+      <div id="gmail-thread-inline-${c.id}" style="max-height:220px;overflow-y:auto;background:var(--off);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:0;border:1px solid #e0e4e6;">
+        <div style="text-align:center;color:#777;font-size:11px;font-weight:700;padding:16px">Loading email log...</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        ${c.email ? `<button class="btn-p" onclick="window.electronAPI ? window.electronAPI.openExternal('https://mail.google.com/mail/u/0/#search/${encodeURIComponent(c.email)}') : window.open('https://mail.google.com/')" style="padding:8px 14px;background:linear-gradient(135deg,#ea4335,#c5221f)">↗ Open Gmail</button>` : ''}
+        <span style="font-size:10px;color:#555;font-weight:700">Emails sync automatically · 2 min polling</span>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--off)">
+      <div style="font-size:10px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;">💬 Texts
+        <span style="font-size:9px;color:#555;font-weight:700;text-transform:none;margin-left:6px">Team Unite number: ${(loadConfig()||{}).unite_phone_number||'not set'}</span>
+      </div>
+      <div id="sms-thread-inline-${c.id}" style="max-height:200px;overflow-y:auto;background:var(--off);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;border:1px solid #e0e4e6;">
+        <div style="text-align:center;color:#777;font-size:11px;font-weight:700">Loading messages...</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <button class="btn-p" onclick="openUniteForContact('${c.phone}')" style="padding:8px 14px;background:linear-gradient(135deg,var(--blue),var(--teal))">
+          💬 Reply in Unite
+        </button>
+        <span style="font-size:10px;color:#555;font-weight:700">Opens Unite app → sent messages appear here automatically</span>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--off)">
+      <div style="font-size:10px;font-weight:900;color:#555;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;">Activity Log</div>
+      <div class="nlog">${logHtml}</div>
+    </div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--off)">
+      <div class="as-box">
+        <div class="as-ttl">Assign &amp; Send — Email + Calendar Invite with All Notes</div>
+        <div class="as-row">
+          <div class="ff">
+            <label>Assign Task To</label>
+            <select class="as-sel" id="as-person">
+              <option value="brian_preapproval">Brian — Run Pre-Approval</option>
+              <option value="brian_refi">Brian — Set Up Refi in Point</option>
+              <option value="chandler_followup">Chandler — Follow Up</option>
+              <option value="matt_review">Matt — Review File</option>
+            </select>
+          </div>
+          <button class="btn-send" onclick="sendFile('${c.id}')">🚀 SEND FILE</button>
+        </div>
+      </div>
+    </div>`
+
+  openModal('modal-card')
+  // Load Unite SMS thread inline
+  setTimeout(() => loadUniteInlineThread(id), 400)
+  setTimeout(() => loadGmailInlineThread(id), 600)
+}
+
+function toggleCardEdit() {
+  const v = document.getElementById('card-view-mode')
+  const e = document.getElementById('card-edit-mode')
+  if (!v || !e) return
+  isEditing = !isEditing
+  v.style.display = isEditing ? 'none' : 'block'
+  e.style.display = isEditing ? 'block' : 'none'
+}
+
+async function saveCardEdit(id) {
+  const editFuMode = document.getElementById('edit-fu-days-opt')?.classList.contains('on') ? 'days' : 'date'
+  let fuDate = null
+  if (editFuMode === 'days') {
+    const days = parseInt(document.getElementById('edit-fu-days')?.value || '2')
+    fuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
+  } else {
+    fuDate = document.getElementById('edit-fu-date')?.value || null
+  }
+
+  // Determine loan type from edit buttons
+  const editLoanType = document.getElementById('edit-lt-refi')?.classList.contains('on') ? 'refi'
+    : document.getElementById('edit-lt-other')?.classList.contains('on') ? 'other' : 'purchase'
+
+  const updates = {
+    first_name: document.getElementById('edit-fname')?.value,
+    last_name: document.getElementById('edit-lname')?.value,
+    phone: document.getElementById('edit-phone')?.value,
+    email:  document.getElementById('edit-email')?.value?.toLowerCase().trim() || null,
+    phone2: document.getElementById('edit-phone2')?.value?.trim() || null,
+    email2: document.getElementById('edit-email2')?.value?.toLowerCase().trim() || null,
+    co_first_name: document.getElementById('edit-cofname')?.value?.trim() || null,
+    co_last_name: document.getElementById('edit-colname')?.value?.trim() || null,
+    est_price: document.getElementById('edit-price')?.value || null,
+    credit_score: document.getElementById('edit-credit')?.value,
+    timeline: document.getElementById('edit-timeline')?.value,
+    loan_type: editLoanType,
+    followup_date: fuDate,
+    office: (contacts.find(x=>x.id===id)?._pendingOffice) || (contacts.find(x=>x.id===id)?.office) || null,
+    updated_at: new Date().toISOString()
+  }
+
+  await updateContact(id, updates)
+  toggleCardEdit()
+  showToast('Contact updated', 'green')
+  openCard(id)
+}
+
+function editSetOffice(o, contactId) {
+  // Update visual
+  document.querySelectorAll(`#card-edit-mode .office-btn`).forEach(b=>b.classList.remove('on'))
+  event.currentTarget.classList.add('on')
+  // Store on the contact immediately
+  const c = contacts.find(x=>x.id===contactId)
+  if(c) c._pendingOffice = o
+}
+
+function editSetLoanType(t) {
+  document.getElementById('edit-lt-purchase')?.classList.toggle('on', t==='purchase')
+  document.getElementById('edit-lt-refi')?.classList.toggle('on', t==='refi')
+  document.getElementById('edit-lt-other')?.classList.toggle('on', t==='other')
+}
+function setEditFuOpt(m) {
+  document.getElementById('edit-fu-days-opt')?.classList.toggle('on', m==='days')
+  document.getElementById('edit-fu-date-opt')?.classList.toggle('on', m==='date')
+}
+
+function recalcDates(closeVal) {
+  if (!closeVal) return
+  const cd = new Date(closeVal)
+  document.getElementById('cd-cd-date').value = formatDate(addBizDays(cd,-3))
+  document.getElementById('cd-funding-date').value = formatDate(addBizDays(cd,4))
+}
+
+// ═══════════════════════════════════════════
+//  CONTACT LOG
+// ═══════════════════════════════════════════
+function openContactLog(id) {
+  activeContactId = id
+  activeLogType = 'call'
+  activeIgnore = false
+  cfuMode = 'days'
+  const cfuDaysEl = document.getElementById('cfu-days-val')
+  if (cfuDaysEl) cfuDaysEl.value = '2'
+  const cfuDateEl = document.getElementById('cfu-date-val')
+  if (cfuDateEl) cfuDateEl.value = ''
+  document.getElementById('cfu-days-opt')?.classList.add('on')
+  document.getElementById('cfu-date-opt')?.classList.remove('on')
+  const c = contacts.find(x=>x.id===id)
+  if (!c) return
+  const name = `${c.first_name||''} ${c.last_name||''}`.trim()
+  document.getElementById('contact-modal-title').textContent = 'LOG CONTACT'
+  document.getElementById('contact-modal-sub').textContent = `${name} · ${COL_LABELS[c.column_id]||''}`
+  document.querySelectorAll('.ct-type').forEach(t=>t.classList.remove('on'))
+  document.getElementById('ct-call')?.classList.add('on')
+  document.getElementById('ct-ignore-btn')?.classList.remove('on')
+  document.getElementById('ign-wrap')?.classList.remove('show')
+  document.getElementById('contact-note').value = ''
+  document.getElementById('ign-note').value = ''
+  openModal('modal-contact')
+}
+
+function openContactLogFromCard() {
+  if (activeContactId) {
+    closeModal('modal-card')
+    openContactLog(activeContactId)
+  }
+}
+
+function setCt(type) {
+  activeLogType = type
+  activeIgnore = false
+  document.querySelectorAll('.ct-type').forEach(t=>t.classList.remove('on'))
+  document.getElementById('ct-'+type)?.classList.add('on')
+  document.getElementById('ct-ignore-btn')?.classList.remove('on')
+  document.getElementById('ign-wrap')?.classList.remove('show')
+}
+
+function toggleIgnore() {
+  activeIgnore = !activeIgnore
+  activeLogType = activeIgnore ? 'ignore' : 'call'
+  document.querySelectorAll('.ct-type').forEach(t=>t.classList.remove('on'))
+  document.getElementById('ct-ignore-btn')?.classList.toggle('on', activeIgnore)
+  document.getElementById('ign-wrap')?.classList.toggle('show', activeIgnore)
+  if (!activeIgnore) {
+    document.getElementById('ct-call')?.classList.add('on')
+    activeLogType = 'call'
+  }
+}
+
+async function saveContactLog() {
+  if (!activeContactId) return
+  const note = activeIgnore
+    ? document.getElementById('ign-note')?.value
+    : document.getElementById('contact-note')?.value
+
+  // Calculate new followup date
+  let fuDate = null
+  if (cfuMode === 'days') {
+    const days = parseInt(document.getElementById('cfu-days-val')?.value || '2')
+    fuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
+  } else {
+    fuDate = document.getElementById('cfu-date-val')?.value || null
+  }
+  console.log('[LOG DEBUG] cfuMode:', cfuMode, '| fuDate:', fuDate, '| activeIgnore:', activeIgnore, '| activeLogType:', activeLogType)
+
+  // Auto-reset follow-up for ALL log types (including ignore)
+  let finalFuDate = fuDate
+
+  const logEntry = {
+    contact_id: activeContactId,
+    user_name: currentUser?.name || 'Unknown',
+    log_type: activeLogType,
+    note: note || null,
+    timestamp: new Date().toISOString()
+  }
+
+  if (supabase) {
+    const { error } = await supabase.from('contact_log').insert(logEntry)
+    if (error) { showToast('Error saving log', 'red'); return }
+    await supabase.from('contacts').update({
+      followup_date: finalFuDate,
+      needs_response: false,
+      updated_at: new Date().toISOString()
+    }).eq('id', activeContactId)
+  } else {
+    const c = contacts.find(x=>x.id===activeContactId)
+    if (c) {
+      if (!c.contact_log) c.contact_log = []
+      c.contact_log.push(logEntry)
+      c.followup_date = finalFuDate; c.needs_response = false
+    }
+  }
+
+  closeModal('modal-contact')
+  showToast('Contact logged ✓', 'green')
+  await loadContacts()
+}
+
+function setCfuOpt(m) {
+  cfuMode = m
+  document.getElementById('cfu-days-opt')?.classList.toggle('on', m==='days')
+  document.getElementById('cfu-date-opt')?.classList.toggle('on', m==='date')
+}
+
+// ═══════════════════════════════════════════
+//  QUICK NOTE
+// ═══════════════════════════════════════════
+async function saveQuickNote(id) {
+  const input = document.getElementById('qn-'+id)
+  if (!input || !input.value.trim()) return
+  const content = input.value.trim()
+  input.value = ''
+
+  const entry = {
+    contact_id: id,
+    user_name: currentUser?.name || 'Unknown',
+    log_type: 'note',
+    note: content,
+    timestamp: new Date().toISOString()
+  }
+
+  // Reset follow-up clock (+2 business days) and clear needs_response — all log types do this
+  const days = (loadConfig()||{}).default_followup_days || 2
+  const newFuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
+
+  if (supabase) {
+    const { error } = await supabase.from('contact_log').insert(entry)
+    if (error) { showToast('Save failed: ' + error.message, 'red'); return }
+    await supabase.from('contacts').update({
+      followup_date: newFuDate, needs_response: false, updated_at: new Date().toISOString()
+    }).eq('id', id)
+  } else {
+    const c = contacts.find(x=>x.id===id)
+    if (c) {
+      if (!c.contact_log) c.contact_log = []
+      c.contact_log.push(entry)
+      c.followup_date = newFuDate; c.needs_response = false
+    }
+  }
+
+  showToast('Note saved', 'green')
+  await loadContacts()
+}
+
+// ═══════════════════════════════════════════
+//  SAVE NOTE (in card detail)
+// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  AI NOTES SUMMARY
+// ═══════════════════════════════════════════
+async function generateNotesSummary(contactId) {
+  const c = contacts.find(x => x.id === contactId)
+  // Merge legacy notes + contact_log notes
+  const legacyNotes = (c?.notes||[]).map(n => ({ text: n.content, author: n.author_name, date: n.created_at }))
+  const logNotes = (c?.contact_log||[]).filter(l => l.note && l.note.trim() && (l.log_type === 'note' || l.log_type === 'call' || l.log_type === 'ignore')).map(l => ({ text: l.log_type !== 'note' ? `[${l.log_type.toUpperCase()}] ${l.note}` : l.note, author: l.user_name, date: l.timestamp }))
+  const allSummaryNotes = [...legacyNotes, ...logNotes]
+  if (!c || allSummaryNotes.length === 0) { showToast('No notes to summarize', 'red'); return }
+  const cfg = loadConfig() || {}
+  if (!cfg.claude_api_key) { showToast('Claude API key not set — check Admin → Settings', 'red'); return }
+
+  showToast('Generating summary...', 'blue')
+  const notesText = allSummaryNotes
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .map(n => `[${formatDateTime(n.date)} — ${n.author}]: ${n.text}`)
+    .join('\n\n')
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.claude_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: `Summarize these mortgage broker contact notes for ${c.first_name} ${c.last_name} as short bullet points. Cover key facts: loan details, timeline, concerns, next steps. Be concise and professional.\n\nNotes:\n${notesText}` }]
+      })
+    })
+    if (!resp.ok) throw new Error('API error ' + resp.status)
+    const data = await resp.json()
+    const summary = data.content[0]?.text || ''
+
+    if (supabase) await supabase.from('contacts').update({ notes_summary: summary }).eq('id', contactId)
+    const local = contacts.find(x => x.id === contactId)
+    if (local) local.notes_summary = summary
+
+    showToast('Summary updated ✓', 'green')
+    openCard(contactId)
+  } catch(e) {
+    console.error('Summary error:', e)
+    showToast('Summary failed: ' + e.message, 'red')
+  }
+}
+
+// ═══════════════════════════════════════════
+//  MIC DICTATION (Web Speech API)
+// ═══════════════════════════════════════════
+let _dictation = null
+function startDictation() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SR) { showToast('Speech recognition not available', 'red'); return }
+
+  // Toggle off if already running
+  if (_dictation) { _dictation.stop(); return }
+
+  const r = new SR()
+  r.continuous = true
+  r.interimResults = false
+  r.lang = 'en-US'
+
+  r.onstart = () => {
+    showToast('🎤 Listening — click mic again to stop', 'blue')
+    document.querySelector('[title="Dictate note"]')?.style.setProperty('background', '#fee2e2')
+  }
+  r.onresult = (e) => {
+    const text = Array.from(e.results).map(r => r[0].transcript).join(' ')
+    const ta = document.getElementById('card-new-note')
+    if (ta) ta.value += (ta.value ? ' ' : '') + text
+  }
+  r.onerror = (e) => { showToast('Mic: ' + e.error, 'red'); _dictation = null }
+  r.onend = () => {
+    _dictation = null
+    document.querySelector('[title="Dictate note"]')?.style.removeProperty('background')
+  }
+
+  _dictation = r
+  r.start()
+}
+
+async function saveNote(id) {
+  const content = document.getElementById('card-new-note')?.value?.trim()
+  if (!content) return
+
+  const entry = {
+    contact_id: id,
+    user_name: currentUser?.name || 'Unknown',
+    log_type: 'note',
+    note: content,
+    timestamp: new Date().toISOString()
+  }
+
+  // Reset follow-up clock (+2 business days) and clear needs_response
+  const days = (loadConfig()||{}).default_followup_days || 2
+  const newFuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
+
+  if (supabase) {
+    const { error } = await supabase.from('contact_log').insert(entry)
+    if (error) { showToast('Save failed: ' + error.message, 'red'); return }
+    await supabase.from('contacts').update({
+      followup_date: newFuDate, needs_response: false, updated_at: new Date().toISOString()
+    }).eq('id', id)
+  }
+
+  // Update local array immediately so card re-renders with the new note
+  const c = contacts.find(x=>x.id===id)
+  if (c) {
+    if (!c.contact_log) c.contact_log = []
+    c.contact_log.push(entry)
+    c.followup_date = newFuDate; c.needs_response = false
+  }
+
+  document.getElementById('card-new-note').value = ''
+  showToast('Note added', 'green')
+  openCard(id)
+  loadContacts()
+}
+
+// ═══════════════════════════════════════════
+//  NEW PROSPECT
+// ═══════════════════════════════════════════
+function openNewProspect() {
+  setTimeout(setupDupListeners, 100)
+  activeLoanType = 'purchase'
+  activeDest = 'prospects'
+  activeSources = []
+  fuMode = 'days'
+  activeOffice = ''
+  document.getElementById('ob-bmb')?.classList.remove('on')
+  document.getElementById('ob-emb')?.classList.remove('on')
+  document.querySelectorAll('.src-cb').forEach(el=>{el.classList.remove('on');el.querySelector('input').checked=false})
+  document.getElementById('src-other-wrap').classList.remove('show')
+  document.getElementById('col-picker').classList.add('show')
+  document.getElementById('np-column').innerHTML = prospectColOptions()
+  document.getElementById('lt-purchase').classList.add('on')
+  document.getElementById('lt-refi').classList.remove('on')
+  document.getElementById('lt-other')?.classList.remove('on')
+  document.getElementById('dest-prospects').classList.add('on')
+  document.getElementById('dest-leads').classList.remove('on')
+  ;['np-fname','np-lname','np-phone','np-email','np-phone2','np-email2','np-cofname','np-colname','np-price','np-credit','np-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''})
+  openModal('modal-new')
+}
+
+function prospectColOptions() {
+  return `<option value="col_faas">⭐ FAAS Team</option>
+          <option value="col_gen1" selected>🏠 Prospects (General)</option>
+          <option value="col_gen2">🏠 Prospects (General 2)</option>
+          <option value="col_gen3">🏠 Prospects (General 3)</option>
+          <option value="col_gen4">🏠 Prospects (General 4)</option>
+          <option value="col_meta">📱 Meta Prospects</option>`
+}
+function leadsColOptions() {
+  return `<option value="lead_prospect" selected>👤 Prospect</option>
+          <option value="lead_docs">📂 Getting Docs</option>
+          <option value="lead_ready">✅ Ready — Pre-Approve / Refi</option>
+          <option value="lead_approved">🏆 Pre-Approved</option>
+          <option value="lead_inprocess">📋 In Process</option>`
+}
+
+function setOffice(o) {
+  activeOffice = o
+  document.getElementById('ob-bmb').classList.toggle('on', o==='bmb')
+  document.getElementById('ob-emb').classList.toggle('on', o==='emb')
+}
+
+function setDest(d) {
+  activeDest = d
+  document.getElementById('dest-prospects').classList.toggle('on', d==='prospects')
+  document.getElementById('dest-leads').classList.toggle('on', d==='leads')
+  document.getElementById('np-column').innerHTML = d==='prospects' ? prospectColOptions() : leadsColOptions()
+}
+
+function setLoanType(t) {
+  activeLoanType = t
+  document.getElementById('lt-purchase').classList.toggle('on', t==='purchase')
+  document.getElementById('lt-refi').classList.toggle('on', t==='refi')
+  document.getElementById('lt-other')?.classList.toggle('on', t==='other')
+}
+
+function toggleSrc(el, src, isOther) {
+  el.classList.toggle('on')
+  const cb = el.querySelector('input')
+  cb.checked = !cb.checked
+  if (cb.checked) { if(!activeSources.includes(src)) activeSources.push(src) }
+  else { activeSources = activeSources.filter(s=>s!==src) }
+  if (isOther) document.getElementById('src-other-wrap').classList.toggle('show', cb.checked)
+}
+
+function setFuOpt(m) {
+  fuMode = m
+  document.getElementById('fu-days-opt').classList.toggle('on', m==='days')
+  document.getElementById('fu-date-opt').classList.toggle('on', m==='date')
+}
+
+async function saveNewProspect() {
+  const fname = document.getElementById('np-fname').value.trim()
+  const lname = document.getElementById('np-lname').value.trim()
+  if (!fname && !lname) { showToast('Please enter at least a name', 'red'); return }
+  if (!activeOffice) {
+    document.getElementById('office-pick').classList.add('office-req')
+    setTimeout(()=>document.getElementById('office-pick').classList.remove('office-req'),600)
+    showToast('Please select BMB or EMB office', 'red')
+    return
+  }
+
+  let fuDate = null
+  if (fuMode === 'days') {
+    const days = parseInt(document.getElementById('fu-days-val').value || '2')
+    fuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
+  } else {
+    fuDate = document.getElementById('fu-date-val').value || null
+  }
+
+  const colId = document.getElementById('np-column').value
+  const note = document.getElementById('np-note').value.trim()
+
+  const newContact = {
+    first_name: fname,
+    last_name: lname,
+    phone: document.getElementById('np-phone').value.trim(),
+    email: document.getElementById('np-email').value.trim().toLowerCase() || null,
+    phone2: document.getElementById('np-phone2').value.trim() || null,
+    email2: document.getElementById('np-email2').value.trim().toLowerCase() || null,
+    co_first_name: document.getElementById('np-cofname').value.trim() || null,
+    co_last_name: document.getElementById('np-colname').value.trim() || null,
+    est_price: document.getElementById('np-price').value.replace(/[^0-9.]/g,'') || null,
+    credit_score: document.getElementById('np-credit').value.trim(),
+    board: activeDest,
+    column_id: colId,
+    team: currentUser?.team || 'matt',
+    loan_type: activeLoanType,
+    source: activeSources[0] || null,
+    office: activeOffice,
+    source_detail: document.getElementById('src-other-detail')?.value?.trim() || null,
+    followup_date: fuDate,
+    created_by_name: currentUser?.name || 'Unknown',
+    sort_order: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+
+  // Reinit supabase if needed
+  if (!supabase) {
+    const cfg2 = loadConfig()
+    if (cfg2 && window.supabase && window.supabase.createClient) {
+      supabase = window.supabase.createClient(cfg2.supabase_url, cfg2.supabase_anon_key)
+    }
+  }
+
+  // Optimistic update — show card immediately
+  const tempId = 'temp-' + Date.now()
+  const optimisticContact = { ...newContact, id: tempId, notes: [], contact_log:
+    note ? [{ contact_id: tempId, user_name: currentUser?.name || 'Unknown', log_type: 'note', note, timestamp: new Date().toISOString() }] : []
+  }
+  contacts.unshift(optimisticContact)
+  renderAllBoards()
+
+  if (supabase) {
+    const { data, error } = await supabase.from('contacts').insert(newContact).select().single()
+    if (error) {
+      // Remove optimistic card on error
+      contacts = contacts.filter(c => c.id !== tempId)
+      renderAllBoards()
+      showToast('Error saving prospect: '+error.message, 'red')
+      return
+    }
+    // Replace temp card with real one from DB
+    contacts = contacts.filter(c => c.id !== tempId)
+    if (note && data) {
+      const { error: noteErr } = await supabase.from('contact_log').insert({ contact_id: data.id, user_name: currentUser?.name || 'Unknown', log_type: 'note', note, timestamp: new Date().toISOString() })
+      if (noteErr) { showToast('Save failed: ' + noteErr.message, 'red') }
+    }
+  }
+
+  // Optimistic update — show card immediately
+  contacts.unshift(newContact)
+  renderAllBoards()
+  closeModal('modal-new')
+  showToast(`${fname} ${lname} added ✓`, 'green')
+  goBoard(activeDest, document.getElementById('nav-'+activeDest))
+  // Then sync with Supabase in background
+  await loadContacts()
+}
+
+// ═══════════════════════════════════════════
+//  MOVE CONTACT
+// ═══════════════════════════════════════════
+async function moveToLeads(id) {
+  await updateContact(id, { board: 'leads', column_id: 'lead_prospect', updated_at: new Date().toISOString() })
+  showToast('Moved to Leads ✓', 'green')
+  await loadContacts()
+}
+
+function openMoveCard(id) {
+  const c = contacts.find(x=>x.id===id)
+  if (!c) return
+  const colIds = ['col_faas','col_gen1','col_gen2','col_gen3','col_gen4','col_meta',
+    'lead_prospect','lead_docs','lead_ready','lead_approved','lead_inprocess',
+    'dead_prospect','dead_denied']
+  const allCols = colIds.map(id => ({ id, label: COL_LABELS[id] || id }))
+  const name = `${c.first_name||''} ${c.last_name||''}`.trim()
+  const opts = allCols.map(col => `<option value="${col.id}" ${col.id===c.column_id?'selected':''}>${col.label}</option>`).join('')
+  const html = `<div style="padding:20px"><div class="fsec" style="margin-top:0">Move ${escHtml(name)} to</div><select id="move-col-sel" style="width:100%;border:1.5px solid #e0e4e6;border-radius:8px;padding:9px 12px;font-family:inherit;font-size:13px;font-weight:700;color:var(--dark);background:var(--off);outline:none;">${opts}</select><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn-s" onclick="closeModal('modal-move')">Cancel</button><button class="btn-p" onclick="confirmMove('${id}')">Move →</button></div></div>`
+  showSimpleModal('MOVE CONTACT', html, 'modal-move')
+}
+
+async function confirmMove(id) {
+  const newCol = document.getElementById('move-col-sel')?.value
+  if (!newCol) return
+  const newBoard = COL_BOARD[newCol] || 'prospects'
+  await updateContact(id, { board: newBoard, column_id: newCol, updated_at: new Date().toISOString() })
+  closeModal('modal-move')
+  showToast('Moved ✓', 'green')
+  await loadContacts()
+}
+
+async function restoreContact(id) {
+  await updateContact(id, { board: 'prospects', column_id: 'col_gen1', updated_at: new Date().toISOString() })
+  showToast('Contact restored ✓', 'green')
+  await loadContacts()
+}
+
+async function markContactDead() {
+  if (!activeContactId) return
+  const c = contacts.find(x=>x.id===activeContactId)
+  const isDenied = c?.board === 'leads'
+  await updateContact(activeContactId, {
+    board: 'dead',
+    column_id: isDenied ? 'dead_denied' : 'dead_prospect',
+    updated_at: new Date().toISOString()
+  })
+  closeModal('modal-card')
+  showToast('Moved to Dead Files', 'blue')
+  await loadContacts()
+}
+
+// ═══════════════════════════════════════════
+//  UNIT INTEGRATION
+// ═══════════════════════════════════════════
+async function callContact(id) {
+  const c = contacts.find(x=>x.id===id)
+  if (!c || !c.phone) return
+  const phone = c.phone.replace(/\D/g,'')
+
+  // Auto-log with timestamp + author
+  const logEntry = {
+    contact_id: id,
+    user_name: currentUser?.name || 'Unknown',
+    log_type: 'call',
+    note: 'Call initiated via Unite (tel: link)',
+    timestamp: new Date().toISOString()
+  }
+  if (supabase) {
+    const { error } = await supabase.from('contact_log').insert(logEntry)
+    if (error) { showToast('Save failed: ' + error.message, 'red') }
+  } else { const con = contacts.find(x=>x.id===id); if(con){if(!con.contact_log)con.contact_log=[];con.contact_log.push(logEntry)} }
+
+  // tel: link — Unite is set as default calling app on all devices
+  const telUrl = `tel:+1${phone}`
+  if (window.electronAPI) window.electronAPI.openExternal(telUrl)
+  else window.open(telUrl)
+
+  showToast(`📞 Calling ${c.first_name} via Unite...`, 'blue')
+  await loadContacts()
+}
+
+async function textContact(id) {
+  // Full SMS integration — opens inline text thread, uses Unite API
+  openSMSModal(id)
+}
+
+function openSMSModal(id) {
+  const c = contacts.find(x=>x.id===id)
+  if (!c) return
+  const msgs = (window._smsCache || {})[id] || []
+  const msgHtml = msgs.length === 0
+    ? '<div style="text-align:center;color:#777;font-size:12px;padding:20px">No messages yet — send the first one below</div>'
+    : msgs.map(m => `
+      <div style="display:flex;justify-content:${m.isOutbound?'flex-end':'flex-start'};margin-bottom:8px">
+        <div style="max-width:75%;padding:9px 12px;border-radius:${m.isOutbound?'12px 12px 3px 12px':'12px 12px 12px 3px'};background:${m.isOutbound?'linear-gradient(135deg,var(--blue),var(--teal))':'var(--off)'};color:${m.isOutbound?'white':'var(--dark)'};font-size:13px;line-height:1.4">
+          ${escHtml(m.body)}
+          <div style="font-size:9px;opacity:.6;margin-top:3px;text-align:right">${new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>`).join('')
+  showSimpleModal(`💬 TEXT — ${c.first_name} ${c.last_name}`, `
+    <div style="padding:0">
+      <div style="height:260px;overflow-y:auto;padding:14px;background:var(--off);border-bottom:1px solid #e0e4e6" id="sms-thread">${msgHtml}</div>
+      <div style="padding:12px;display:flex;gap:8px">
+        <textarea id="sms-input" placeholder="Type a message..." rows="2" style="flex:1;border:1.5px solid #e0e4e6;border-radius:8px;padding:9px 12px;font-family:inherit;font-size:13px;color:var(--dark);background:var(--off);outline:none;resize:none"></textarea>
+        <button class="btn-p" onclick="sendSMSFromModal('${id}')" style="align-self:flex-end">Send</button>
+      </div>
+    </div>`, 'modal-sms')
+  loadSMSThread(id)
+}
+
+async function loadSMSThread(contactId) {
+  const cfg = loadConfig() || {}
+  if (!cfg.unite_client_id || !cfg.unite_client_secret) return
+  try {
+    const c = contacts.find(x=>x.id===contactId)
+    if (!c) return
+    const token = await getUniteToken(cfg)
+    // Normalize contact phone to 10 digits for comparison
+    const contactPhone = (c.phone || '').replace(/\D/g, '').slice(-10)
+    const dateTo = new Date().toISOString()
+    const dateFrom = new Date(Date.now() - 90*24*60*60*1000).toISOString()
+    const resp = await fetch(`https://api.intermedia.net/messaging/v2/accounts/_me/sms/users/history?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&count=500`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+    })
+    if (resp.ok) {
+      const data = await resp.json()
+      const allRecords = data.records || data.items || data.messages || []
+      const msgs = allRecords
+        .filter(m => {
+          const norm = (m.phoneNumber || m.phone_number || m.remoteNumber || '').replace(/\D/g, '').slice(-10)
+          return norm === contactPhone
+        })
+        .map(m => ({
+          id: m.id || m.messageId,
+          body: m.text || m.body || m.message || '',
+          isOutbound: (m.direction || '') === 'out' || m.isInbound === false,
+          timestamp: m.dateTime || m.timestamp || m.sentAt
+        }))
+        .sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp))
+      if (!window._smsCache) window._smsCache = {}
+      window._smsCache[contactId] = msgs
+      const thread = document.getElementById('sms-thread')
+      if (thread) {
+        if (msgs.length === 0) {
+          thread.innerHTML = '<div style="text-align:center;color:#777;font-size:12px;padding:20px">No messages found for this contact</div>'
+        } else {
+          thread.innerHTML = msgs.map(m => `
+            <div style="display:flex;justify-content:${m.isOutbound?'flex-end':'flex-start'};margin-bottom:8px">
+              <div style="max-width:75%;padding:9px 12px;border-radius:${m.isOutbound?'12px 12px 3px 12px':'12px 12px 12px 3px'};background:${m.isOutbound?'linear-gradient(135deg,var(--blue),var(--teal))':'var(--off)'};color:${m.isOutbound?'white':'var(--dark)'};font-size:13px">
+                ${escHtml(m.body)}
+                <div style="font-size:9px;opacity:.6;margin-top:2px;text-align:${m.isOutbound?'right':'left'}">${new Date(m.timestamp).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+              </div>
+            </div>`).join('')
+          thread.scrollTop = thread.scrollHeight
+        }
+      }
+    } else {
+      const errText = await resp.text()
+      console.error('SMS thread load error:', resp.status, errText)
+    }
+  } catch(e) { console.error('SMS load error:', e.message) }
+}
+
+async function sendSMSFromModal(contactId) {
+  const body = document.getElementById('sms-input')?.value?.trim()
+  if (!body) return
+  document.getElementById('sms-input').value = ''
+  const cfg = loadConfig() || {}
+  const c = contacts.find(x=>x.id===contactId)
+  if (!c) return
+  try {
+    if (cfg.unite_client_id) {
+      const token = await getUniteToken(cfg)
+      // No Send SMS API - open Unite app
+      const phone = c.phone.replace(/[^0-9+]/g,'')
+      if (window.electronAPI) window.electronAPI.openExternal(`tel:${phone}`)
+    }
+  } catch(e) { console.error('SMS send error:', e) }
+  const logEntry = { contact_id: contactId, user_name: currentUser?.name||'Unknown', log_type: 'text', note: `SMS: ${body.substring(0,60)}`, timestamp: new Date().toISOString() }
+  if (supabase) {
+    const { error } = await supabase.from('contact_log').insert(logEntry)
+    if (error) { showToast('Save failed: ' + error.message, 'red') }
+    const days = (loadConfig()||{}).followup_default_days||2
+    const newFuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
+    await supabase.from('contacts').update({followup_date:newFuDate, followup_mode:'auto', updated_at:new Date().toISOString()}).eq('id',contactId)
+  } else { const con = contacts.find(x=>x.id===contactId); if(con){if(!con.contact_log)con.contact_log=[];con.contact_log.push(logEntry)} }
+  showToast('Message sent ✓', 'green')
+  await loadSMSThread(contactId)
+  await loadContacts()
+}
+
+async function getUniteToken(cfg) {
+  if (window._uniteToken && window._uniteTokenExpiry > Date.now()) return window._uniteToken
+  if (!cfg.unite_client_id || !cfg.unite_client_secret) {
+    throw new Error('Unite client_id or client_secret not configured')
+  }
+  const resp = await fetch('https://login.intermedia.net/user/connect/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=client_credentials&client_id=${encodeURIComponent(cfg.unite_client_id)}&client_secret=${encodeURIComponent(cfg.unite_client_secret)}&scope=api.service.messaging`
+  })
+  if (!resp.ok) {
+    const errText = await resp.text()
+    throw new Error(`Unite auth failed (${resp.status}): ${errText}`)
+  }
+  const data = await resp.json()
+  if (!data.access_token) throw new Error('Unite auth: no access_token in response')
+  window._uniteToken = data.access_token
+  window._uniteTokenExpiry = Date.now() + ((data.expires_in || 3600) - 60) * 1000
+  return window._uniteToken
+}
+
+async function sendFile(id) {
+  const c = contacts.find(x=>x.id===id)
+  if (!c) return
+  const person = document.getElementById('as-person')?.value || ''
+  const name = `${c.first_name||''} ${c.last_name||''}`.trim()
+  const cfg = loadConfig() || {}
+  // Determine which Gmail to use:
+  // Matt: office field drives account selection
+  // Chandler: always account 1 (BMB)
+  // Brian: always account 2 (EMB)
+  let gmailAccount = 1
+  if (cfg.user_name === 'Matt' || cfg.user_role === 'admin') {
+    gmailAccount = c.office === 'emb' ? 2 : 1
+  } else if (cfg.user_name === 'Brian') {
+    gmailAccount = 2
+  } else {
+    gmailAccount = 1 // Chandler + default
+  }
+  const fromEmail = gmailAccount === 2 ? cfg.gmail2_email : cfg.gmail1_email
+  showToast(`File for ${name} → ${person.replace('_',' ')} via ${fromEmail || 'Gmail'} ✓`, 'green')
+  // TODO: wire up Claude API to compose email + calendar invite
+}
+
+// ═══════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════
+function openSettings() {
+  const cfg = loadConfig() || {}
+  const html = `<div style="padding:20px">
+    <div class="frow"><div class="ff"><label>Your Name</label><input id="s-name" value="${escAttr(cfg.user_name||'')}" /></div><div class="ff"><label>Initials</label><input id="s-initials" value="${escAttr(cfg.user_initials||'')}" maxlength="2" /></div></div>
+    <div class="frow"><div class="ff"><label>Role</label><select id="s-role"><option value="admin" ${cfg.user_role==='admin'?'selected':''}>Admin</option><option value="lo" ${cfg.user_role==='lo'?'selected':''}>Loan Officer</option></select></div><div class="ff"><label>Team</label><select id="s-team"><option value="matt" ${cfg.user_team==='matt'?'selected':''}>Team Matt</option><option value="shad" ${cfg.user_team==='shad'?'selected':''}>Team Shad</option><option value="lauren" ${cfg.user_team==='lauren'?'selected':''}>Team Lauren</option></select></div></div>
+    <div class="frow"><div class="ff"><label>Supabase URL</label><input id="s-sb-url" value="${escAttr(cfg.supabase_url||'')}" /></div></div>
+    <div class="frow"><div class="ff"><label>Supabase Key</label><input id="s-sb-key" value="${escAttr(cfg.supabase_anon_key||'')}" type="password" /></div></div>
+    <div class="frow"><div class="ff"><label>Claude API Key</label><input id="s-claude" value="${escAttr(cfg.claude_api_key||'')}" type="password" /></div></div>
+    <div class="frow"><div class="ff"><label>Unite API Key</label><input id="s-unite-key" value="${escAttr(cfg.unit_api_key||'')}" /></div><div class="ff"><label>Unite Phone</label><input id="s-unite-phone" value="${escAttr(cfg.unit_phone||'')}" /></div></div>
+    <div class="frow"><div class="ff"><label>Default Follow-Up Days</label><input id="s-fu-days" value="${cfg.followup_default_days||2}" type="number" min="1" max="30" /></div></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button class="btn-s" onclick="exportSettings()">⬇ Export</button>
+      <button class="btn-s" onclick="importSettings()">⬆ Import</button>
+      <button class="btn-s" onclick="closeModal('modal-settings')">Cancel</button>
+      <button class="btn-p" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+  </div>`
+  showSimpleModal('⚙️ SETTINGS', html, 'modal-settings')
+}
+
+function exportSettings() {
+  const cfg = loadConfig() || {}
+  // Mask sensitive keys for display but include them in export
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], {type: 'application/json'})
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'emb-settings-' + new Date().toISOString().split('T')[0] + '.json'
+  a.click()
+  URL.revokeObjectURL(url)
+  showToast('Settings exported ✓', 'green')
+}
+
+function importSettings() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const text = await file.text()
+    try {
+      const cfg = JSON.parse(text)
+      localStorage.setItem('emb_config', JSON.stringify(cfg))
+      showToast('Settings imported — restarting...', 'green')
+      setTimeout(() => location.reload(), 1500)
+    } catch(e) {
+      showToast('Invalid settings file', 'red')
+    }
+  }
+  input.click()
+}
+
+function saveSettings() {
+  const cfg = loadConfig() || {}
+  cfg.user_name = document.getElementById('s-name')?.value
+  cfg.user_initials = document.getElementById('s-initials')?.value?.toUpperCase()
+  cfg.user_role = document.getElementById('s-role')?.value
+  cfg.user_team = document.getElementById('s-team')?.value
+  cfg.supabase_url = document.getElementById('s-sb-url')?.value
+  cfg.supabase_anon_key = document.getElementById('s-sb-key')?.value
+  cfg.claude_api_key = document.getElementById('s-claude')?.value
+  cfg.unit_api_key = document.getElementById('s-unite-key')?.value
+  // Gmail app passwords
+  cfg.gmail_mbemb_app_password = document.getElementById('s-gmail-mbemb')?.value
+  cfg.gmail_mbbmb_app_password = document.getElementById('s-gmail-mbbmb')?.value
+  cfg.gmail_cs_app_password    = document.getElementById('s-gmail-cs')?.value
+  cfg.gmail_by_app_password    = document.getElementById('s-gmail-by')?.value
+  cfg.unite_phone = document.getElementById('s-unite-phone')?.value
+  cfg.followup_default_days = parseInt(document.getElementById('s-fu-days')?.value||'2')
+  saveConfig(cfg)
+  currentUser = { name: cfg.user_name, initials: cfg.user_initials, role: cfg.user_role, team: cfg.user_team }
+  updateNavUser()
+  closeModal('modal-settings')
+  showToast('Settings saved ✓', 'green')
+}
+
+// ═══════════════════════════════════════════
+//  SIDEBAR + BOARD NAV
+// ═══════════════════════════════════════════
+function sbToggle(mode) {
+  currentTeamView = mode
+  const myBtn = document.getElementById('sb-my-btn')
+  const teamBtn = document.getElementById('sb-team-btn')
+  const myNav = document.getElementById('sb-my-nav')
+  const teamNav = document.getElementById('sb-team-nav')
+  const pill = document.getElementById('team-pill')
+  if (mode === 'my') {
+    myBtn.classList.add('on'); teamBtn.classList.remove('on')
+    myNav.style.display = 'block'; teamNav.style.display = 'none'
+    pill.style.display = 'none'
+  } else {
+    teamBtn.classList.add('on'); myBtn.classList.remove('on')
+    myNav.style.display = 'none'; teamNav.style.display = 'block'
+    pill.style.display = 'inline-flex'
+  }
+  loadContacts()
+}
+
+function switchTeamView(team) {
+  viewingTeam = team
+  document.getElementById('team-pill').textContent = team.charAt(0).toUpperCase()+team.slice(1)+' Team'
+  loadContacts()
+}
+
+const BOARD_META = {
+  prospects:{ icon:'🏠', label:'PROSPECTS' },
+  leads:{ icon:'⚡', label:'LEADS' },
+  closed:{ icon:'✅', label:'CLOSED LOANS' },
+  dead:{ icon:'💀', label:'DEAD FILES' }
+}
+
+function goBoard(b, el) {
+  currentBoard = b
+  ;['prospects','leads','closed','dead'].forEach(id => {
+    const bd = document.getElementById('board-'+id)
+    if (bd) { bd.classList.remove('on'); bd.style.display = 'none' }
+  })
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
+  if (el) el.classList.add('on')
+  const bd = document.getElementById('board-'+b)
+  if (bd) { bd.classList.add('on'); bd.style.display = 'flex' }
+  const meta = BOARD_META[b]
+  document.getElementById('bh-title').innerHTML = `<div class="bh-icon">${meta.icon}</div>${meta.label}`
+}
+
+// ═══════════════════════════════════════════
+//  MODALS
+// ═══════════════════════════════════════════
+function openModal(id) { document.getElementById(id)?.classList.add('open') }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open') }
+
+function showSimpleModal(title, bodyHtml, id) {
+  let el = document.getElementById(id)
+  if (!el) {
+    el = document.createElement('div')
+    el.className = 'overlay'
+    el.id = id
+    el.innerHTML = `<div class="modal sm"><div class="mhd"><div><div class="mtitle">${escHtml(title)}</div></div><button class="mx" onclick="closeModal('${id}')">✕</button></div><div class="mbd"></div></div>`
+    document.body.appendChild(el)
+    el.addEventListener('click', function(ev) { if(ev.target===this) this.classList.remove('open') })
+  }
+  el.querySelector('.mbd').innerHTML = bodyHtml
+  el.classList.add('open')
+}
+
+document.querySelectorAll('.overlay').forEach(o => {
+  o.addEventListener('click', function(ev) { if(ev.target===this) this.classList.remove('open') })
+})
+
+// ═══════════════════════════════════════════
+//  DB HELPER
+// ═══════════════════════════════════════════
+async function updateContact(id, updates) {
+  if (supabase) {
+    const { error } = await supabase.from('contacts').update(updates).eq('id', id)
+    if (error) { showToast('Update error: '+error.message, 'red'); return }
+  } else {
+    const c = contacts.find(x=>x.id===id)
+    if (c) Object.assign(c, updates)
+  }
+}
+
+// ═══════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════
+let toastTimer = null
+function showToast(msg, type='blue') {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.className = 'toast show ' + type
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000)
+}
+
+// ═══════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════
+function displayName(c) {
+  const first = c.first_name || ''
+  const last = c.last_name || ''
+  const coFirst = c.co_first_name || ''
+  const coLast = c.co_last_name || ''
+  const primary = `${first} ${last}`.trim()
+  if (!coFirst) return primary
+  if (!coLast || coLast.toLowerCase() === last.toLowerCase()) {
+    return `${first} & ${coFirst} ${last}`.trim()
+  }
+  return `${primary} & ${coFirst} ${coLast}`.trim()
+}
+
+function escHtml(s) {
+  if (!s) return ''
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+function escAttr(s) { return escHtml(s) }
+
+function formatRelativeTime(d) {
+  if (!d) return ''
+  const date = new Date(d)
+  const now = new Date()
+  const diff = now - date
+  const mins = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  if (hours < 24) return `${hours}h ago`
+  if (days === 1) return 'yesterday'
+  if (days < 7) return `${days}d ago`
+  return formatDate(d)
+}
+
+function formatDate(d) {
+  if (!d) return '—'
+  const date = d instanceof Date ? d : new Date(d)
+  if (isNaN(date)) return String(d)
+  return date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+}
+function formatDateTime(d) {
+  if (!d) return ''
+  const date = new Date(d)
+  return date.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
+}
+
+function addBizDays(date, days) {
+  const d = new Date(date)
+  let added = 0
+  const dir = days >= 0 ? 1 : -1
+  const total = Math.abs(days)
+  while (added < total) {
+    d.setDate(d.getDate() + dir)
+    const day = d.getDay()
+    if (day !== 0 && day !== 6) added++
+  }
+  return d
+}
+
+function getSrcLabel(src) {
+  const map = {
+    'Realtor':'🏠 Realtor', 'Referral':'🤝 Referral',
+    'Meta Lead':'📱 Meta Lead', 'Call In':'📞 Call In',
+    'Website':'🌐 Website', 'Other':'📋 Other',
+    // Legacy values for backward compatibility with existing data
+    faas:'⭐ FAAS Team', realtor:'🏠 Realtor', referral_other:'🤝 Referral',
+    meta:'📱 Meta Lead', callin_bmb:'📞 Call In', callin_emb:'📞 Call In',
+    website:'🌐 Website', openhouse:'🏡 Open House', instagram:'📲 Instagram',
+    past_client:'👥 Past Client'
+  }
+  return map[src] || src || ''
+}
+
+function logTypeLabel(t) {
+  const map = {call:'📞 Call',email:'📧 Email',text:'💬 Text',note:'📝 Note',ignore:'— Ignore'}
+  return map[t] || t
+}
+function logTypeIcon(t) {
+  const map = {call:'📞',email:'📧',text:'💬',note:'📝',ignore:'—'}
+  return map[t] || '•'
+}
+function logTypeName(t) {
+  const map = {call:'Call',email:'Email',text:'Text',note:'Note',ignore:'Ignore'}
+  return map[t] || t
+}
+
+// ═══════════════════════════════════════════
+//  EMAIL FROM CARD — COMPOSE + SEND
+// ═══════════════════════════════════════════
+async function sendEmailFromCard(contactId) {
+  const c = contacts.find(x=>x.id===contactId)
+  if (!c) return
+  const subject = document.getElementById('email-subject-'+contactId)?.value?.trim()
+  const body = document.getElementById('email-body-'+contactId)?.value?.trim()
+  if (!subject || !body) { showToast('Please enter subject and message', 'red'); return }
+  if (!c.email) { showToast('No email address on this contact', 'red'); return }
+  
+  const cfg = loadConfig() || {}
+  // Route by office: EMB = Gmail 1 (Eugene), BMB = Gmail 2 (Bend)
+  // Exception: Chandler always uses Gmail 1, Brian always uses Gmail 2
+  let accountNum = 1
+  if (cfg.user_name === 'Brian') accountNum = 2
+  else if (cfg.user_name !== 'Chandler') accountNum = c.office === 'bmb' ? 2 : 1
+  const token = accountNum === 2 ? cfg.gmail2_token : cfg.gmail1_token
+  const fromEmail = accountNum === 2 ? cfg.gmail2_email : cfg.gmail1_email
+  
+  if (!token) { showToast('Gmail not connected — go to Admin → Integrations', 'red'); return }
+  
+  try {
+    // Build raw email
+    const rawEmail = [`From: ${fromEmail}`, `To: ${c.email}`, `Subject: ${subject}`, 'Content-Type: text/plain; charset=utf-8', '', body].join('\r\n')
+    const base64 = btoa(unescape(encodeURIComponent(rawEmail))).replace(/\+/g,'-').replace(/\//g,'_')
+    
+    const resp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: base64 })
+    })
+    
+    if (!resp.ok) {
+      const err = await resp.json()
+      if (err.error?.code === 401) {
+        showToast('Gmail token expired — re-authorize in Admin → Integrations', 'red')
+        return
+      }
+      throw new Error(err.error?.message || 'Send failed')
+    }
+    
+    // Clear form
+    document.getElementById('email-subject-'+contactId).value = ''
+    document.getElementById('email-body-'+contactId).value = ''
+    
+    // Log it + auto-reset follow-up
+    const logEntry = { contact_id: contactId, user_name: currentUser?.name||'Unknown', log_type: 'email', note: `Email sent: ${subject}`, timestamp: new Date().toISOString() }
+    if (supabase) {
+      const { error } = await supabase.from('contact_log').insert(logEntry)
+      if (error) { showToast('Save failed: ' + error.message, 'red') }
+      const days = (loadConfig()||{}).followup_default_days||2
+      const newFuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
+      await supabase.from('contacts').update({followup_date:newFuDate, followup_mode:'auto', updated_at:new Date().toISOString()}).eq('id',contactId)
+    } else { const con = contacts.find(x=>x.id===contactId); if(con){if(!con.contact_log)con.contact_log=[];con.contact_log.push(logEntry)} }
+    
+    showToast(`Email sent to ${c.email} ✓`, 'green')
+    await loadContacts()
+  } catch(e) {
+    console.error('Email send error:', e)
+    showToast('Email failed: ' + e.message, 'red')
+  }
+}
+
+async function aiDraftEmail(contactId) {
+  const c = contacts.find(x=>x.id===contactId)
+  if (!c) return
+  const cfg = loadConfig() || {}
+  if (!cfg.claude_api_key) { showToast('Claude API key not set', 'red'); return }
+  
+  const subject = document.getElementById('email-subject-'+contactId)?.value || 'Follow up'
+  showToast('Claude is drafting...', 'blue')
+  
+  try {
+    const notes = c.notes?.map(n=>n.content).join('\n') || ''
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.claude_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 500,
+        messages: [{ role: 'user', content: `Draft a professional, warm, brief email for a mortgage broker. Contact: ${c.first_name} ${c.last_name}. Loan: ${c.loan_type}. Subject: ${subject}. Notes: ${notes}. Sign off naturally as ${currentUser?.name||'Matt'} from ${c.office==='emb'?'Eugene Mortgage Brokers':'Bend Mortgage Brokers'}.` }]
+      })
+    })
+    const data = await resp.json()
+    const draft = data.content?.[0]?.text || ''
+    if (draft && document.getElementById('email-body-'+contactId)) {
+      document.getElementById('email-body-'+contactId).value = draft
+    }
+    showToast('Draft ready ✓', 'green')
+  } catch(e) { showToast('Draft failed', 'red') }
+}
+
+// ═══════════════════════════════════════════
+//  EMAIL FROM CARD
+// ═══════════════════════════════════════════
+function openEmailFromCard(id) {
+  const c = contacts.find(x=>x.id===id)
+  if(!c || !c.email) { showToast('No email on this contact', 'red'); return }
+  openCard(id)
+  // Switch to email section after card opens
+  setTimeout(() => {
+    const emailSection = document.querySelector('#card-modal-body [data-section="email"]')
+    if(emailSection) emailSection.scrollIntoView({behavior:'smooth'})
+  }, 300)
+}
+
+// ═══════════════════════════════════════════
+//  UNITE INLINE SMS
+// ═══════════════════════════════════════════
+async function loadUniteInlineThread(contactId) {
+  const c = contacts.find(x=>x.id===contactId)
+  if(!c) return
+  const threadEl = document.getElementById('sms-thread-inline-' + contactId)
+  if(!threadEl) return
+  
+  threadEl.innerHTML = '<div style="text-align:center;color:#555;font-size:11px;padding:12px">Loading messages...</div>'
+  
+  try {
+    if (supabase) {
+      const { data: msgs, error } = await supabase
+        .from('sms_messages')
+        .select('*')
+        .eq('contact_id', contactId)
+        .order('timestamp', { ascending: true })
+      
+      if (error) {
+        console.error('SMS load error:', error.message)
+        threadEl.innerHTML = '<div style="text-align:center;color:var(--red);font-size:11px;font-weight:700;padding:8px">Error loading messages: ' + escHtml(error.message) + '</div>'
+        return
+      }
+      
+      if (!msgs || msgs.length === 0) {
+        const cfg = loadConfig() || {}
+        const hasUnite = cfg.unite_client_id && cfg.unite_client_secret
+        threadEl.innerHTML = hasUnite
+          ? '<div style="text-align:center;color:#555;font-size:11px;padding:10px;line-height:1.5">No messages yet.<br>Messages sync every 5 min after you send from Unite.</div>'
+          : '<div style="text-align:center;color:#555;font-size:11px;padding:10px;line-height:1.5">Unite not configured.<br>Add credentials in Admin → Integrations.</div>'
+      } else {
+        threadEl.innerHTML = msgs.map(m=>`
+          <div style="display:flex;justify-content:${m.direction==='out'?'flex-end':'flex-start'};margin-bottom:6px">
+            <div style="max-width:75%;padding:7px 10px;border-radius:${m.direction==='out'?'10px 10px 3px 10px':'10px 10px 10px 3px'};background:${m.direction==='out'?'linear-gradient(135deg,var(--blue),var(--teal))':'white'};color:${m.direction==='out'?'white':'var(--dark)'};font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+              ${escHtml(m.text||'')}
+              <div style="font-size:9px;opacity:.6;margin-top:2px;text-align:${m.direction==='out'?'right':'left'}">${new Date(m.timestamp).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+            </div>
+          </div>`).join('')
+        threadEl.scrollTop = threadEl.scrollHeight
+      }
+    } else {
+      threadEl.innerHTML = '<div style="text-align:center;color:#555;font-size:11px;padding:8px">Not connected to database</div>'
+    }
+  } catch(e) {
+    console.error('loadUniteInlineThread error:', e)
+    threadEl.innerHTML = '<div style="text-align:center;color:var(--red);font-size:11px;font-weight:700;padding:8px">Could not load messages</div>'
+  }
+}
+
+async function forceSyncNow() {
+  const btn = document.getElementById('sync-now-btn')
+  if (btn) btn.textContent = '↻ Syncing...'
+  setSyncStatus('syncing', 'Syncing...')
+  try {
+    await Promise.all([pollGmailNow(), pollUniteMessages()])
+    setSyncStatus('ok', 'Synced ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}))
+  } catch(e) {
+    setSyncStatus('error', 'Sync error')
+  }
+  if (btn) btn.textContent = '↻ Sync'
+}
+
+async function clearNeedsResponse(contactId) {
+  if (supabase) await supabase.from('contacts').update({ needs_response: false }).eq('id', contactId)
+  const c = contacts.find(x => x.id === contactId)
+  if (c) c.needs_response = false
+  showToast('Marked as responded ✓', 'green')
+  openCard(contactId)
+  loadContacts()
+}
+
+async function refreshGmailForContact(contactId) {
+  const contact = contacts.find(c => c.id === contactId)
+  if (!contact) return
+  // Reset auto-fetch flag so 30-day search runs again
+  _gmailAutoFetchedContacts.delete(contactId)
+  // Show loading in both threads
+  const gmailEl = document.getElementById(`gmail-thread-inline-${contactId}`)
+  const smsEl   = document.getElementById(`sms-thread-inline-${contactId}`)
+  if (gmailEl) gmailEl.innerHTML = '<div style="text-align:center;color:#555;font-size:11px;font-weight:700;padding:16px">Searching last 30 days...</div>'
+  if (smsEl)   smsEl.innerHTML   = '<div style="text-align:center;color:#555;font-size:11px;font-weight:700;padding:10px">Refreshing texts...</div>'
+  // Run both in parallel
+  await Promise.all([
+    fetchGmailForContact(contact, 30),
+    pollUniteMessages().then(() => loadUniteInlineThread(contactId))
+  ])
+}
+
+function openUniteForContact(phone) {
+  // Open Unite app to this contact's number
+  // Unite handles sending — next SMS poll picks up the sent message automatically
+  const clean = (phone||'').replace(/[^0-9+]/g,'')
+  const uniteUrl = `unitesmb://${clean}`
+  if (window.electronAPI) window.electronAPI.openExternal(uniteUrl)
+  else window.open(`tel:${clean}`)
+  showToast('Opening Unite — send from there, messages sync automatically ✓', 'blue')
+}
+
+// ═══════════════════════════════════════════
+//  UNITE SMS POLLER
+//  Polls Unite API every 5 min, stores in Supabase
+//  All devices see same messages — no sending via API
+// ═══════════════════════════════════════════
+async function startUnitePoller() {
+  const cfg = loadConfig() || {}
+  if (!cfg.unite_client_id || !supabase) return
+  await pollUniteMessages()
+  setInterval(pollUniteMessages, 5 * 60 * 1000) // every 5 minutes
+}
+
+async function pollUniteMessages() {
+  const cfg = loadConfig() || {}
+  if (!cfg.unite_client_id || !cfg.unite_client_secret || !supabase) return
+  try {
+    const token = await getUniteToken(cfg)
+    
+    // Fetch last 90 days (builds up the history over time)
+    const dateTo = new Date().toISOString()
+    const dateFrom = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    
+    const resp = await fetch(
+      `https://api.intermedia.net/messaging/v2/accounts/_me/sms/users/history?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&count=500`,
+      { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } }
+    )
+    
+    if (!resp.ok) {
+      const errText = await resp.text()
+      console.error('Unite poll error:', resp.status, errText)
+      return
+    }
+    
+    const data = await resp.json()
+    const records = data.records || data.items || data.messages || []
+    
+    console.log(`Unite poll: raw response keys: ${Object.keys(data).join(', ')}, records: ${records.length}`)
+    if (records.length === 0) {
+      console.log('Unite poll: 0 records returned. Full response:', JSON.stringify(data).substring(0, 500))
+      return
+    }
+    // Log first record shape so we know the field names
+    console.log('Unite poll: first record shape:', JSON.stringify(records[0]))
+    
+    // Pre-fetch already-logged SMS IDs from contact_log (note field = 'sms:{id}')
+    const { data: existingLogs } = await supabase
+      .from('contact_log').select('note').eq('log_type', 'text').like('note', 'sms:%')
+    const loggedSmsIds = new Set((existingLogs || []).map(l => l.note))
+
+    let matched = 0, inserted = 0, needsRerender = false
+    for (const record of records) {
+      // Normalize to last 10 digits — handles +1, 1, dashes, parens
+      const normPhone = (record.phoneNumber || record.phone_number || record.remoteNumber || '').replace(/\D/g, '').slice(-10)
+      if (!normPhone || normPhone.length < 10) continue
+
+      // Find matching contact — check both phone and phone2
+      const contact = contacts.find(c => {
+        const p1 = (c.phone || '').replace(/\D/g, '').slice(-10)
+        const p2 = (c.phone2 || '').replace(/\D/g, '').slice(-10)
+        return p1 === normPhone || (p2 && p2 === normPhone)
+      })
+      if (!contact) continue
+      matched++
+
+      const msgId = record.id || record.messageId || record.smsId
+      if (!msgId) continue
+
+      const isInbound = (record.direction || '') === 'in' || record.isInbound === true
+      const msg = {
+        id: String(msgId),
+        contact_id: contact.id,
+        phone_number: record.phoneNumber || record.phone_number || record.remoteNumber || '',
+        direction: isInbound ? 'in' : 'out',
+        text: record.text || record.body || record.message || '',
+        timestamp: record.dateTime || record.timestamp || record.sentAt || new Date().toISOString(),
+        subtype: record.subtype || 'sms',
+        team: currentUser?.team || 'matt'
+      }
+
+      const { error } = await supabase
+        .from('sms_messages')
+        .upsert(msg, { onConflict: 'id', ignoreDuplicates: true })
+      if (error) { console.error('SMS upsert error:', error.message); continue }
+      inserted++
+
+      // Write contact_log entry if not already logged (dedup by note = 'sms:{id}')
+      const logNote = `sms:${msg.id}`
+      if (!loggedSmsIds.has(logNote)) {
+        loggedSmsIds.add(logNote)
+        const logEntry = {
+          contact_id: contact.id,
+          user_name: isInbound ? (contact.first_name || 'Contact') : (currentUser?.name || 'Matt'),
+          log_type: 'text',
+          note: logNote,
+          timestamp: msg.timestamp
+        }
+        const { error: logErr } = await supabase.from('contact_log').insert(logEntry)
+        if (logErr) { console.error('Save failed:', logErr.message) }
+
+        // Set needs_response=true for inbound texts, clear for outbound
+        if (isInbound && !contact.needs_response) {
+          await supabase.from('contacts').update({ needs_response: true }).eq('id', contact.id)
+          contact.needs_response = true
+          needsRerender = true
+        } else if (!isInbound && contact.needs_response) {
+          await supabase.from('contacts').update({ needs_response: false }).eq('id', contact.id)
+          contact.needs_response = false
+          needsRerender = true
+        }
+
+        // Update local contact_log so card re-renders immediately
+        if (!contact.contact_log) contact.contact_log = []
+        contact.contact_log.push(logEntry)
+        needsRerender = true
+      }
+    }
+
+    if (needsRerender) loadContacts()
+    console.log(`Unite poll: ${records.length} records, ${matched} matched contacts, ${inserted} upserted`)
+    setSyncStatus('ok', 'Synced ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}))
+    
+  } catch(e) {
+    console.error('Unite poll failed:', e.message)
+  }
+}
+
+// ═══════════════════════════════════════════
+//  AUTO BACKUP
+// ═══════════════════════════════════════════
+function scheduleAutoBackup() {
+  // Check if we should run now, then schedule next 5pm
+  checkAndRunBackup()
+  
+  // Check every hour if it's time
+  setInterval(checkAndRunBackup, 60 * 60 * 1000)
+}
+
+function checkAndRunBackup() {
+  const now = new Date()
+  const hour = now.getHours()
+  const minute = now.getMinutes()
+  const today = now.toDateString()
+  const lastBackup = localStorage.getItem('emb_last_backup_date')
+  
+  // Only run at exactly 5pm (17:00-17:05), not on startup
+  const isBackupTime = hour === 17 && minute <= 5
+  if (isBackupTime && lastBackup !== today) {
+    runAutoBackup()
+  }
+}
+
+async function runAutoBackup(manual = false) {
+  try {
+    const now = new Date()
+    const timestamp = now.toISOString().replace(/[:.]/g,'-').slice(0,19)
+    
+    // Pull all data from Supabase (or use in-memory if demo mode)
+    let backupData = { contacts: [], notes: [], contact_log: [], exported_at: now.toISOString(), version: '1.0' }
+
+    if (supabase) {
+      const [c, n, l] = await Promise.all([
+        supabase.from('contacts').select('*'),
+        supabase.from('notes').select('*'),
+        supabase.from('contact_log').select('*')
+      ])
+      backupData.contacts = c.data || []
+      backupData.notes = n.data || []
+      backupData.contact_log = l.data || []
+    } else {
+      backupData.contacts = contacts
+    }
+    
+    // Save as JSON file
+    const json = JSON.stringify(backupData, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `emb-backup-${timestamp}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    
+    // Mark today as backed up
+    localStorage.setItem('emb_last_backup_date', now.toDateString())
+    
+    const msg = manual ? 'Backup downloaded ✓' : `Auto-backup saved — ${backupData.contacts.length} contacts`
+    showToast(msg, 'green')
+    
+  } catch(e) {
+    console.error('Backup error:', e)
+    showToast('Backup failed — check console', 'red')
+  }
+}
+
+// ═══════════════════════════════════════════
+//  AI PARSER
+// ═══════════════════════════════════════════
+function togglePasteArea() {
+  const paste = document.getElementById('parser-paste')
+  const btnRow = document.getElementById('parser-btn-row')
+  const isShowing = paste.classList.contains('show')
+  paste.classList.toggle('show', !isShowing)
+  if (btnRow) btnRow.style.display = !isShowing ? 'flex' : 'none'
+  if (!isShowing) setTimeout(() => paste.focus(), 100)
+}
+
+function clearParser() {
+  document.getElementById('parser-paste').value = ''
+  document.getElementById('parser-paste').classList.remove('show')
+  document.getElementById('parser-btn-row').style.display = 'none'
+}
+
+// Read image from clipboard and run AI parser
+async function triggerClipboardPaste() {
+  try {
+    const items = await navigator.clipboard.read()
+    for (const item of items) {
+      const imgType = item.types.find(t => t.startsWith('image/'))
+      if (imgType) {
+        const blob = await item.getType(imgType)
+        const reader = new FileReader()
+        reader.onload = async (e) => {
+          const base64 = e.target.result.split(',')[1]
+          await runParser({ type: 'image', base64, mimeType: imgType })
+        }
+        reader.readAsDataURL(blob)
+        return
+      }
+    }
+    // No image found — fall back to text paste area
+    showToast('No image in clipboard — paste text below instead', 'orange')
+    togglePasteArea()
+  } catch(e) {
+    // Fallback: show text area (clipboard API may need permission)
+    showToast('Click "Paste Text" or use the Upload button for screenshots', 'orange')
+    togglePasteArea()
+  }
+}
+
+// Global Cmd+V / Ctrl+V listener — pastes image when New Prospect modal is open
+document.addEventListener('paste', async (e) => {
+  const modal = document.getElementById('modal-new')
+  if (!modal || !modal.classList.contains('show')) return
+  // If user is typing in a text field, let normal paste happen
+  const tag = document.activeElement?.tagName
+  if (tag === 'TEXTAREA' || tag === 'INPUT') return
+  const items = e.clipboardData?.items || []
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault()
+      const blob = item.getAsFile()
+      const reader = new FileReader()
+      reader.onload = async (ev) => {
+        const base64 = ev.target.result.split(',')[1]
+        await runParser({ type: 'image', base64, mimeType: item.type })
+      }
+      reader.readAsDataURL(blob)
+      return
+    }
+  }
+})
+
+async function parseText() {
+  const text = document.getElementById('parser-paste')?.value?.trim()
+  if (!text) return
+  await runParser({ type: 'text', content: text })
+}
+
+async function parseImage(input) {
+  if (!input.files?.length) return
+  const file = input.files[0]
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    const base64 = e.target.result.split(',')[1]
+    const mimeType = file.type
+    await runParser({ type: 'image', base64, mimeType })
+  }
+  reader.readAsDataURL(file)
+}
+
+async function runParser(input) {
+  const cfg = loadConfig() || {}
+  if (!cfg.claude_api_key) {
+    showToast('Claude API key not set — add it in Admin Settings → Integrations', 'red')
+    return
+  }
+
+  const loading = document.getElementById('parser-loading')
+  loading.classList.add('show')
+
+  try {
+    const systemPrompt = `You are a mortgage broker assistant. Extract contact information from the provided content and return ONLY valid JSON with these exact fields:
+{
+  "first_name": "",
+  "last_name": "",
+  "phone": "",
+  "email": "",
+  "phone2": "",
+  "email2": "",
+  "co_first_name": "",
+  "co_last_name": "",
+  "loan_type": "purchase or refi or other or unknown",
+  "credit_score": "",
+  "est_price": "",
+  "source": "Realtor or Referral or Meta Lead or Call In or Website or Other or unknown",
+  "notes": "",
+  "office": "bmb or emb or unknown"
+}
+Return ONLY the JSON object, no other text. If a field cannot be determined leave it as empty string.
+If there are two borrowers/applicants, put the primary borrower in first_name/last_name/phone/email and the co-borrower in co_first_name/co_last_name/phone2/email2.
+For office: Eugene/EMB/Eugene Mortgage = emb, Bend/BMB/Bend Mortgage = bmb.
+For loan_type: buying/purchase/buy a home = purchase, refinance/refi/lower rate = refi.
+For source: Meta lead/Facebook/form = Meta Lead, text message from client = Referral.`
+
+    let messages
+    if (input.type === 'text') {
+      messages = [{ role: 'user', content: `Extract contact info from this:
+
+${input.content}` }]
+    } else {
+      messages = [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: input.mimeType, data: input.base64 }},
+        { type: 'text', text: 'Extract contact info from this screenshot.' }
+      ]}]
+    }
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cfg.claude_api_key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        system: systemPrompt,
+        messages
+      })
+    })
+
+    const data = await resp.json()
+
+    // Check for API errors
+    if (!resp.ok || data.type === 'error') {
+      const errMsg = data.error?.message || `API error ${resp.status}`
+      console.error('Claude API error:', data)
+      loading.classList.remove('show')
+      showToast('Claude API error: ' + errMsg, 'red')
+      return
+    }
+
+    const raw = data.content?.[0]?.text || '{}'
+    const clean = raw.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(clean)
+
+    // Check if anything was actually extracted
+    const hasData = parsed.first_name || parsed.last_name || parsed.phone || parsed.email
+    if (!hasData) {
+      loading.classList.remove('show')
+      showToast('Could not extract any contact info — try pasting as text instead', 'orange')
+      return
+    }
+
+    // Fill in the form
+    if (parsed.first_name) document.getElementById('np-fname').value = parsed.first_name
+    if (parsed.last_name) document.getElementById('np-lname').value = parsed.last_name
+    if (parsed.phone) document.getElementById('np-phone').value = parsed.phone
+    if (parsed.email) document.getElementById('np-email').value = parsed.email
+    if (parsed.phone2) document.getElementById('np-phone2').value = parsed.phone2
+    if (parsed.email2) document.getElementById('np-email2').value = parsed.email2
+    if (parsed.co_first_name) document.getElementById('np-cofname').value = parsed.co_first_name
+    if (parsed.co_last_name) document.getElementById('np-colname').value = parsed.co_last_name
+    if (parsed.credit_score) document.getElementById('np-credit').value = parsed.credit_score
+    if (parsed.est_price) document.getElementById('np-price').value = parsed.est_price
+    if (parsed.notes) document.getElementById('np-note').value = parsed.notes
+
+    // Set loan type
+    if (parsed.loan_type === 'purchase') setLoanType('purchase')
+    else if (parsed.loan_type === 'refi') setLoanType('refi')
+
+    // Set office
+    if (parsed.office === 'bmb') setOffice('bmb')
+    else if (parsed.office === 'emb') setOffice('emb')
+
+    // Set source
+    if (parsed.source && parsed.source !== 'unknown') {
+      document.querySelectorAll('.src-cb').forEach(el => {
+        const srcVal = el.getAttribute('onclick')?.match(/'([^']+)'/)?.[1]
+        if (srcVal === parsed.source) { el.classList.add('on'); el.querySelector('input').checked = true; activeSources.push(parsed.source) }
+      })
+    }
+
+    // Auto-select Meta Prospects column if source is Meta Lead
+    if (parsed.source === 'Meta Lead') {
+      document.getElementById('np-column').value = 'col_meta'
+    }
+
+    loading.classList.remove('show')
+    clearParser()
+    showToast('✓ Form filled from ' + (input.type === 'image' ? 'screenshot' : 'text'), 'green')
+
+    // Check for duplicates after filling
+    const name = `${parsed.first_name} ${parsed.last_name}`.trim()
+    const phone = parsed.phone?.replace(/\D/g,'')
+    checkDuplicates(name, phone)
+
+  } catch(e) {
+    console.error('Parser error:', e)
+    loading.classList.remove('show')
+    showToast('Could not parse — try pasting as text instead', 'red')
+  }
+}
+
+// ═══════════════════════════════════════════
+//  DUPLICATE DETECTION
+// ═══════════════════════════════════════════
+function checkDuplicates(name, phone) {
+  const matches = []
+
+  contacts.forEach(c => {
+    const cName = `${c.first_name||''} ${c.last_name||''}`.trim().toLowerCase()
+    const cPhone = (c.phone||'').replace(/\D/g,'')
+    const cPhone2 = (c.phone2||'').replace(/\D/g,'')
+    const inputName = (name||'').toLowerCase()
+    const inputPhone = (phone||'').replace(/\D/g,'')
+
+    // Match on phone or phone2 (strong match) or name similarity (fuzzy)
+    const phoneMatch = inputPhone && (
+      (cPhone && inputPhone === cPhone) || (cPhone2 && inputPhone === cPhone2)
+    )
+    const nameMatch = inputName.length > 2 && cName.length > 2 && (
+      cName.includes(inputName) || inputName.includes(cName) ||
+      levenshtein(cName, inputName) <= 2
+    )
+
+    if (phoneMatch || nameMatch) {
+      matches.push({ contact: c, reason: phoneMatch ? 'Same phone number' : 'Similar name' })
+    }
+  })
+
+  const warn = document.getElementById('dup-warning')
+  const list = document.getElementById('dup-list')
+  
+  if (matches.length === 0) {
+    warn.classList.remove('show')
+    return
+  }
+
+  list.innerHTML = matches.slice(0,3).map(m => `
+    <div class="dup-card" onclick="openCard('${m.contact.id}');closeModal('modal-new')">
+      <div class="dup-name">${escHtml(m.contact.first_name||'')} ${escHtml(m.contact.last_name||'')}</div>
+      <div class="dup-detail">${m.reason} · ${escHtml(m.contact.phone||'')} · ${COL_LABELS[m.contact.column_id]||''}</div>
+    </div>`).join('')
+  
+  warn.classList.add('show')
+}
+
+// Also check on name/phone input blur
+function setupDupListeners() {
+  const fname = document.getElementById('np-fname')
+  const lname = document.getElementById('np-lname')
+  const phone = document.getElementById('np-phone')
+  const check = () => {
+    const name = `${fname?.value||''} ${lname?.value||''}`.trim()
+    const ph = phone?.value?.replace(/\D/g,'')
+    if (name.length > 3 || (ph && ph.length >= 10)) checkDuplicates(name, ph)
+  }
+  fname?.addEventListener('blur', check)
+  lname?.addEventListener('blur', check)
+  phone?.addEventListener('blur', check)
+}
+
+// Simple Levenshtein for fuzzy name matching
+function levenshtein(a, b) {
+  const m = a.length, n = b.length
+  const dp = Array.from({length: m+1}, (_,i) => Array.from({length: n+1}, (_,j) => i===0?j:j===0?i:0))
+  for (let i=1;i<=m;i++) for (let j=1;j<=n;j++)
+    dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1])
+  return dp[m][n]
+}
+
+// ═══════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'))
+  if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); openNewProspect() }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'r') { e.preventDefault(); refreshData() }
+})
+
+// ═══════════════════════════════════════════
+//  INIT BOARDS STATE
+// ═══════════════════════════════════════════
+document.getElementById('board-prospects').style.display = 'none'
+document.getElementById('board-closed').style.display = 'none'
+document.getElementById('board-dead').style.display = 'none'
+
+// START
+window.addEventListener('load', () => {
+  // Small delay to ensure CDN scripts are fully loaded
+  setTimeout(init, 100)
+})
+</script>
+<script src="gmail.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

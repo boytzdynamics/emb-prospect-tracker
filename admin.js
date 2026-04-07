@@ -9,7 +9,7 @@ function renderAdminPanel() {
   showSimpleModal('⚙️ ADMIN SETTINGS', `
     <div style="padding:0">
       <div style="display:flex;border-bottom:1px solid #eaeef0;background:#f8f9fa;border-radius:8px 8px 0 0;overflow:hidden">
-        ${['Profile','Teams','Users','Columns','Boards','Integrations','Gmail','Import','Defaults'].map((tab,i) =>
+        ${['Profile','Users','Columns','Boards','Integrations','Gmail','Import','Defaults'].map((tab,i) =>
           `<button onclick="adminTab(${i})" id="atab-${i}" style="flex:1;padding:10px 4px;border:none;background:${i===0?'white':'transparent'};font-family:inherit;font-size:10px;font-weight:900;color:${i===0?'var(--dark)':'#aaa'};cursor:pointer;border-bottom:2px solid ${i===0?'var(--blue)':'transparent'};transition:all .2s">${tab}</button>`
         ).join('')}
       </div>
@@ -21,19 +21,8 @@ function renderAdminPanel() {
         <button class="btn-p" onclick="saveAdminProfile()" style="margin-top:8px">Save Profile</button>
       </div>
 
-      <!-- 1: Teams -->
+      <!-- 1: Users -->
       <div id="apanel-1" style="padding:20px;display:none">
-        <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">MANAGE TEAMS</div>
-        <div id="teams-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
-        <div style="display:flex;gap:8px">
-          <input id="new-team-name" placeholder="New team name (e.g. Team Portland)" style="flex:1;border:1.5px solid #e0e4e6;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:13px;background:var(--off);outline:none" />
-          <input id="new-team-phone" placeholder="Shared phone (+15415551234)" style="flex:1;border:1.5px solid #e0e4e6;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:13px;background:var(--off);outline:none" />
-          <button class="btn-p" onclick="addTeam()">+ Add Team</button>
-        </div>
-      </div>
-
-      <!-- 2: Users -->
-      <div id="apanel-2" style="padding:20px;display:none">
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">MANAGE USERS</div>
         <div id="users-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
         <div style="background:var(--off);border:1.5px solid #e0e4e6;border-radius:10px;padding:14px">
@@ -45,16 +34,16 @@ function renderAdminPanel() {
         </div>
       </div>
 
-      <!-- 3: Columns -->
-      <div id="apanel-3" style="padding:20px;display:none">
+      <!-- 2: Columns -->
+      <div id="apanel-2" style="padding:20px;display:none">
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px">COLUMN DISPLAY LABELS</div>
         <div style="font-size:11px;color:#888;margin-bottom:12px">Internal IDs never change — only what shows on screen</div>
         <div id="col-labels-list" style="display:flex;flex-direction:column;gap:8px"></div>
         <button class="btn-p" onclick="saveColumnLabels()" style="margin-top:14px">Save Labels</button>
       </div>
 
-      <!-- 4: Boards (per-team visibility) -->
-      <div id="apanel-4" style="padding:20px;display:none">
+      <!-- 3: Boards (per-team visibility) -->
+      <div id="apanel-3" style="padding:20px;display:none">
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px">BOARD VISIBILITY PER TEAM</div>
         <div style="font-size:11px;color:#888;margin-bottom:12px">Choose which boards each team can see. Hidden boards block all moves to those boards.</div>
         <div class="frow" style="margin-bottom:14px">
@@ -80,8 +69,8 @@ function renderAdminPanel() {
         </div>
       </div>
 
-      <!-- 5: Integrations (Supabase, Claude, Unite) -->
-      <div id="apanel-5" style="padding:20px;display:none">
+      <!-- 4: Integrations (Supabase, Claude, Unite) -->
+      <div id="apanel-4" style="padding:20px;display:none">
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">SUPABASE</div>
         <div class="frow"><div class="ff"><label>Supabase URL</label><input id="a-sb-url" value="${cfg.supabase_url||''}" /></div></div>
         <div class="frow"><div class="ff"><label>Supabase Anon Key</label><input id="a-sb-key" value="${cfg.supabase_anon_key||''}" type="password" /></div></div>
@@ -103,35 +92,36 @@ function renderAdminPanel() {
         <button class="btn-p" onclick="saveIntegrations()" style="margin-top:14px">Save Integrations</button>
       </div>
 
-      <!-- 6: Gmail (App Passwords — Admin only) -->
-      <div id="apanel-6" style="padding:20px;display:none">
+      <!-- 5: Gmail (App Passwords — Admin only) -->
+      <div id="apanel-5" style="padding:20px;display:none">
         <div style="background:#eef5fc;border:1.5px solid var(--blue);border-radius:9px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--dark);line-height:1.7">
-          <strong>📧 Gmail App Password Setup</strong><br>
-          Matt's PC scrapes all 4 accounts automatically. One-time setup per account.<br><br>
+          <strong>📧 Gmail Email Scraping</strong><br>
+          Add Gmail accounts to scrape. Emails are matched to contacts and trigger follow-up resets.<br><br>
           <strong>How to get an App Password:</strong><br>
           1. Go to <strong>myaccount.google.com</strong> → Security → 2-Step Verification<br>
           2. Scroll to bottom → <strong>App passwords</strong><br>
           3. Select app: <em>Mail</em> · Select device: <em>Windows Computer</em><br>
-          4. Copy the 16-character password and paste below<br>
-          5. Repeat for each account
+          4. Copy the 16-character password and paste below
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:12px">
-          ${gmailAccountRow('MBEMB', 'matt@eugenebrokers.com', 'a-pw-mbemb', cfg.gmail_mbemb_app_password)}
-          ${gmailAccountRow('MBBMB', 'matt@bendmortgagebrokers.com', 'a-pw-mbbmb', cfg.gmail_mbbmb_app_password)}
-          ${gmailAccountRow('CS', 'chandler@bendmortgagebrokers.com', 'a-pw-cs', cfg.gmail_cs_app_password)}
-          ${gmailAccountRow('BY', 'brian@eugenebrokers.com', 'a-pw-by', cfg.gmail_by_app_password)}
+        <div id="gmail-accounts-list" style="display:flex;flex-direction:column;gap:12px"></div>
+
+        <div style="background:var(--off);border:1.5px solid #e0e4e6;border-radius:10px;padding:14px;margin-top:14px">
+          <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">ADD GMAIL ACCOUNT</div>
+          <div class="frow"><div class="ff"><label>Email Address</label><input id="new-gmail-email" placeholder="name@company.com" /></div><div class="ff"><label>Short Label</label><input id="new-gmail-label" placeholder="e.g. CS, MB" maxlength="8" /></div></div>
+          <div class="frow"><div class="ff"><label>App Password (16 characters)</label><input id="new-gmail-pw" type="password" placeholder="xxxx xxxx xxxx xxxx" style="font-family:monospace;letter-spacing:2px" /></div></div>
+          <button class="btn-p" onclick="addGmailAccount()" style="margin-top:8px">+ Add Account</button>
         </div>
 
         <div style="margin-top:16px;display:flex;gap:8px;align-items:center">
-          <button class="btn-p" onclick="saveGmailPasswords()">💾 Save App Passwords</button>
+          <button class="btn-p" onclick="saveGmailAccounts()">💾 Save All Gmail Accounts</button>
           <button class="btn-s" onclick="testGmailConnections()">🔍 Test Connections</button>
         </div>
         <div id="gmail-test-results" style="margin-top:10px"></div>
       </div>
 
-      <!-- 7: Import -->
-      <div id="apanel-7" style="padding:20px;display:none">
+      <!-- 6: Import -->
+      <div id="apanel-6" style="padding:20px;display:none">
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">CSV MASS IMPORT</div>
         <div style="background:var(--off);border:2px dashed #dde2e4;border-radius:12px;padding:24px;text-align:center;margin-bottom:14px">
           <div style="font-size:32px;margin-bottom:8px">📄</div>
@@ -155,8 +145,8 @@ function renderAdminPanel() {
         </div>
       </div>
 
-      <!-- 8: Defaults -->
-      <div id="apanel-8" style="padding:20px;display:none">
+      <!-- 7: Defaults -->
+      <div id="apanel-7" style="padding:20px;display:none">
         <div class="frow">
           <div class="ff">
             <label>Default Follow-Up Days</label>
@@ -176,34 +166,127 @@ function renderAdminPanel() {
   `, 'modal-admin')
 
   renderColLabels()
-  renderTeamsList()
   renderUsersList()
   loadBoardVisibilityAdmin()
   loadAdminPinForPanel()
   loadUnitePhonesAdmin()
+  loadGmailAccountsAdmin()
 }
 
 // Gmail account row helper
-function gmailAccountRow(label, email, inputId, currentVal) {
-  const isSet = !!currentVal
-  return `
+// ═══════════════════════════════════════════
+//  DYNAMIC GMAIL ACCOUNTS
+// ═══════════════════════════════════════════
+let _adminGmailAccounts = []
+
+async function loadGmailAccountsAdmin() {
+  _adminGmailAccounts = []
+  if (!supabase) return
+  try {
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'gmail_accounts').maybeSingle()
+    if (data?.value) {
+      const parsed = JSON.parse(data.value)
+      if (Array.isArray(parsed)) _adminGmailAccounts = parsed
+    }
+  } catch(e) { console.error('Error loading gmail accounts:', e) }
+
+  // If no dynamic accounts, migrate legacy hardcoded ones
+  if (_adminGmailAccounts.length === 0) {
+    const cfg = loadConfig() || {}
+    const legacy = [
+      { email: 'matt@eugenebrokers.com',          label: 'MBEMB', key: 'gmail_mbemb' },
+      { email: 'matt@bendmortgagebrokers.com',    label: 'MBBMB', key: 'gmail_mbbmb' },
+      { email: 'chandler@bendmortgagebrokers.com', label: 'CS',    key: 'gmail_cs' },
+      { email: 'brian@eugenebrokers.com',          label: 'BY',    key: 'gmail_by' },
+    ]
+    for (const l of legacy) {
+      const pw = cfg[l.key + '_app_password']
+      if (pw) _adminGmailAccounts.push({ email: l.email, label: l.label, app_password: pw })
+    }
+  }
+  renderGmailAccountsList()
+}
+
+function renderGmailAccountsList() {
+  const el = document.getElementById('gmail-accounts-list')
+  if (!el) return
+  if (_adminGmailAccounts.length === 0) {
+    el.innerHTML = '<div style="color:#ccc;font-size:12px;font-weight:700;padding:8px">No Gmail accounts configured yet</div>'
+    return
+  }
+  el.innerHTML = _adminGmailAccounts.map((a, i) => {
+    const isSet = !!a.app_password
+    return `
     <div style="background:var(--off);border:1.5px solid ${isSet ? 'var(--green)' : '#e0e4e6'};border-radius:10px;padding:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;background:${isSet ? 'linear-gradient(135deg,var(--green),#4aab79)' : 'var(--dark)'};color:${isSet ? 'var(--dark)' : 'white'};padding:2px 10px;border-radius:5px">${label}</span>
-        <span style="font-size:12px;font-weight:700;color:#888">${email}</span>
-        ${isSet ? '<span style="margin-left:auto;font-size:10px;font-weight:900;color:var(--green)">✓ Connected</span>' : '<span style="margin-left:auto;font-size:10px;font-weight:700;color:#ccc">Not configured</span>'}
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;background:${isSet ? 'linear-gradient(135deg,var(--green),#4aab79)' : 'var(--dark)'};color:${isSet ? 'var(--dark)' : 'white'};padding:2px 10px;border-radius:5px">${escHtml(a.label)}</span>
+        <span style="font-size:12px;font-weight:700;color:#888">${escHtml(a.email)}</span>
+        ${isSet ? '<span style="margin-left:auto;font-size:10px;font-weight:900;color:var(--green)">✓ Connected</span>' : '<span style="margin-left:auto;font-size:10px;font-weight:700;color:#ccc">No password</span>'}
+        <button onclick="removeGmailAccount(${i})" style="background:#fff0f0;color:var(--red);border:1.5px solid #ffcdd2;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:900;cursor:pointer;margin-left:4px">Remove</button>
       </div>
       <div class="frow" style="margin-bottom:0">
         <div class="ff">
-          <label>App Password (16 characters)</label>
-          <input id="${inputId}" value="${currentVal||''}" type="password" placeholder="xxxx xxxx xxxx xxxx" style="font-family:monospace;letter-spacing:2px" />
+          <label>App Password</label>
+          <input id="gmail-pw-${i}" value="${a.app_password||''}" type="password" placeholder="xxxx xxxx xxxx xxxx" style="font-family:monospace;letter-spacing:2px" onchange="updateGmailPassword(${i}, this.value)" />
         </div>
       </div>
     </div>`
+  }).join('')
+}
+
+function addGmailAccount() {
+  const email = document.getElementById('new-gmail-email')?.value?.trim()
+  const label = document.getElementById('new-gmail-label')?.value?.trim()?.toUpperCase()
+  const pw = document.getElementById('new-gmail-pw')?.value?.replace(/\s/g, '')
+  if (!email || !label) { showToast('Email and label are required', 'red'); return }
+  if (_adminGmailAccounts.some(a => a.email === email)) { showToast('Account already exists', 'red'); return }
+  _adminGmailAccounts.push({ email, label, app_password: pw || '' })
+  document.getElementById('new-gmail-email').value = ''
+  document.getElementById('new-gmail-label').value = ''
+  document.getElementById('new-gmail-pw').value = ''
+  renderGmailAccountsList()
+  showToast('Account added — click Save to persist', 'blue')
+}
+
+function removeGmailAccount(index) {
+  _adminGmailAccounts.splice(index, 1)
+  renderGmailAccountsList()
+  showToast('Account removed — click Save to persist', 'blue')
+}
+
+function updateGmailPassword(index, value) {
+  if (_adminGmailAccounts[index]) {
+    _adminGmailAccounts[index].app_password = value.replace(/\s/g, '')
+  }
+}
+
+async function saveGmailAccounts() {
+  if (!supabase) { showToast('Supabase not connected', 'red'); return }
+  // Read latest passwords from inputs
+  _adminGmailAccounts.forEach((a, i) => {
+    const input = document.getElementById('gmail-pw-' + i)
+    if (input) a.app_password = input.value.replace(/\s/g, '')
+  })
+  try {
+    const payload = { key: 'gmail_accounts', value: JSON.stringify(_adminGmailAccounts) }
+    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', 'gmail_accounts').maybeSingle()
+    let error
+    if (existing) {
+      ({ error } = await supabase.from('app_settings').update({ value: payload.value }).eq('key', 'gmail_accounts'))
+    } else {
+      ({ error } = await supabase.from('app_settings').insert(payload))
+    }
+    if (error) { showToast('Failed to save: ' + error.message, 'red'); return }
+    showToast('Gmail accounts saved — polling will restart', 'green')
+    // Update dynamic accounts in gmail.js and restart poller
+    if (typeof _gmailDynamicAccounts !== 'undefined') _gmailDynamicAccounts = _adminGmailAccounts
+    stopGmailPoller()
+    startGmailPoller()
+  } catch(e) { showToast('Error saving Gmail accounts', 'red') }
 }
 
 function adminTab(i) {
-  for(let j=0;j<9;j++){
+  for(let j=0;j<8;j++){
     const tab = document.getElementById('atab-'+j)
     const panel = document.getElementById('apanel-'+j)
     if(tab){tab.style.background=j===i?'white':'transparent';tab.style.color=j===i?'var(--dark)':'#aaa';tab.style.borderBottomColor=j===i?'var(--blue)':'transparent'}
@@ -211,50 +294,36 @@ function adminTab(i) {
   }
 }
 
-function saveGmailPasswords() {
-  const cfg = loadConfig() || {}
-  cfg.gmail_mbemb_app_password = document.getElementById('a-pw-mbemb')?.value?.replace(/\s/g,'') || cfg.gmail_mbemb_app_password
-  cfg.gmail_mbbmb_app_password = document.getElementById('a-pw-mbbmb')?.value?.replace(/\s/g,'') || cfg.gmail_mbbmb_app_password
-  cfg.gmail_cs_app_password    = document.getElementById('a-pw-cs')?.value?.replace(/\s/g,'')    || cfg.gmail_cs_app_password
-  cfg.gmail_by_app_password    = document.getElementById('a-pw-by')?.value?.replace(/\s/g,'')    || cfg.gmail_by_app_password
-  saveConfig(cfg)
-  showToast('Gmail app passwords saved — polling will start within 2 minutes', 'green')
-  // Restart poller with new credentials
-  stopGmailPoller()
-  startGmailPoller()
-  setTimeout(() => renderAdminPanel(), 300)
-}
-
 async function testGmailConnections() {
   const results = document.getElementById('gmail-test-results')
   if (results) results.innerHTML = '<div style="color:#aaa;font-size:11px;font-weight:700">Testing connections...</div>'
 
-  const cfg = loadConfig() || {}
-  const accounts = [
-    { label: 'MBEMB', email: 'matt@eugenebrokers.com',           pw: cfg.gmail_mbemb_app_password },
-    { label: 'MBBMB', email: 'matt@bendmortgagebrokers.com',     pw: cfg.gmail_mbbmb_app_password },
-    { label: 'CS',    email: 'chandler@bendmortgagebrokers.com', pw: cfg.gmail_cs_app_password },
-    { label: 'BY',    email: 'brian@eugenebrokers.com',           pw: cfg.gmail_by_app_password },
-  ]
+  // Read latest passwords from inputs before testing
+  _adminGmailAccounts.forEach((a, i) => {
+    const input = document.getElementById('gmail-pw-' + i)
+    if (input) a.app_password = input.value.replace(/\s/g, '')
+  })
 
   const html = []
-  for (const acct of accounts) {
-    if (!acct.pw) {
-      html.push(`<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;background:#eee;color:#aaa;padding:1px 8px;border-radius:4px">${acct.label}</span><span style="font-size:11px;color:#aaa">Not configured</span></div>`)
+  for (const acct of _adminGmailAccounts) {
+    if (!acct.app_password) {
+      html.push(`<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;background:#eee;color:#aaa;padding:1px 8px;border-radius:4px">${escHtml(acct.label)}</span><span style="font-size:11px;color:#aaa">No password set</span></div>`)
       continue
     }
     try {
       const msgs = await window.electronAPI.gmailFetch({
         email: acct.email,
-        appPassword: acct.pw,
-        since: new Date(Date.now() - 24*60*60*1000).toISOString() // last 24h test
+        appPassword: acct.app_password,
+        since: new Date(Date.now() - 24*60*60*1000).toISOString()
       })
-      html.push(`<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;background:linear-gradient(135deg,var(--green),#4aab79);color:var(--dark);padding:1px 8px;border-radius:4px">${acct.label}</span><span style="font-size:11px;color:var(--green);font-weight:700">✓ Connected — ${msgs?.length||0} emails in last 24h</span></div>`)
+      html.push(`<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;background:linear-gradient(135deg,var(--green),#4aab79);color:var(--dark);padding:1px 8px;border-radius:4px">${escHtml(acct.label)}</span><span style="font-size:11px;color:var(--green);font-weight:700">✓ Connected — ${msgs?.length||0} emails in last 24h</span></div>`)
     } catch(e) {
-      html.push(`<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;background:#fff0f0;color:var(--red);padding:1px 8px;border-radius:4px">${acct.label}</span><span style="font-size:11px;color:var(--red);font-weight:700">✗ Failed — check app password</span></div>`)
+      html.push(`<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;background:#fff0f0;color:var(--red);padding:1px 8px;border-radius:4px">${escHtml(acct.label)}</span><span style="font-size:11px;color:var(--red);font-weight:700">✗ Failed — check app password</span></div>`)
     }
   }
-  if (results) results.innerHTML = `<div style="background:var(--off);border-radius:8px;padding:10px 14px">${html.join('')}</div>`
+  if (results) results.innerHTML = _adminGmailAccounts.length === 0
+    ? '<div style="color:#aaa;font-size:11px;font-weight:700">No accounts to test — add one first</div>'
+    : `<div style="background:var(--off);border-radius:8px;padding:10px 14px">${html.join('')}</div>`
 }
 
 // ── All existing functions below (unchanged) ──
@@ -288,36 +357,6 @@ function saveColumnLabels() {
   renderAllBoards()
 }
 
-function renderTeamsList() {
-  const el = document.getElementById('teams-list')
-  if(!el) return
-  const teams = JSON.parse(localStorage.getItem('emb_teams')||'[]')
-  el.innerHTML = teams.length === 0
-    ? '<div style="color:#ccc;font-size:12px;font-weight:700">No additional teams yet</div>'
-    : teams.map(t => `
-      <div style="display:flex;align-items:center;gap:10px;background:var(--off);border-radius:9px;padding:10px 14px">
-        <div style="flex:1"><div style="font-weight:900;font-size:13px">${t.name}</div><div style="font-size:11px;color:#888">${t.phone||'No phone set'}</div></div>
-        <button onclick="deleteTeam('${t.id}')" style="background:#fff0f0;color:var(--red);border:1.5px solid #ffcdd2;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:900;cursor:pointer">Remove</button>
-      </div>`).join('')
-}
-
-function addTeam() {
-  const name = document.getElementById('new-team-name')?.value?.trim()
-  if(!name) return
-  const teams = JSON.parse(localStorage.getItem('emb_teams')||'[]')
-  teams.push({id:'team-'+Date.now(), name, phone: document.getElementById('new-team-phone')?.value?.trim(), members:[]})
-  localStorage.setItem('emb_teams', JSON.stringify(teams))
-  document.getElementById('new-team-name').value = ''
-  document.getElementById('new-team-phone').value = ''
-  renderTeamsList()
-  showToast('Team added', 'green')
-}
-
-function deleteTeam(id) {
-  const teams = JSON.parse(localStorage.getItem('emb_teams')||'[]').filter(t=>t.id!==id)
-  localStorage.setItem('emb_teams', JSON.stringify(teams))
-  renderTeamsList()
-}
 
 function renderUsersList() {
   const el = document.getElementById('users-list')
@@ -381,10 +420,10 @@ async function saveIntegrations() {
   if (supabase) {
     const phones = collectUnitePhones()
     try {
-      const payload = { key: 'unite_phones', value: JSON.stringify(phones), updated_by: currentUser?.name || 'Admin', updated_at: new Date().toISOString() }
+      const payload = { key: 'unite_phones', value: JSON.stringify(phones) }
       const { data: existing } = await supabase.from('app_settings').select('id').eq('key', 'unite_phones').maybeSingle()
       if (existing) {
-        await supabase.from('app_settings').update(payload).eq('key', 'unite_phones')
+        await supabase.from('app_settings').update({ value: payload.value }).eq('key', 'unite_phones')
       } else {
         await supabase.from('app_settings').insert(payload)
       }
@@ -524,14 +563,12 @@ async function saveBoardVisibility() {
   if (!supabase) { showToast('Supabase not connected', 'red'); return }
   try {
     const key = 'boards_visible_' + team
-    const payload = { key, value: JSON.stringify(visible), updated_by: currentUser?.name || 'Admin', updated_at: new Date().toISOString() }
-    // Check if row exists, then update or insert
     const { data: existing } = await supabase.from('app_settings').select('id').eq('key', key).maybeSingle()
     let error
     if (existing) {
-      ({ error } = await supabase.from('app_settings').update(payload).eq('key', key))
+      ({ error } = await supabase.from('app_settings').update({ value: JSON.stringify(visible) }).eq('key', key))
     } else {
-      ({ error } = await supabase.from('app_settings').insert(payload))
+      ({ error } = await supabase.from('app_settings').insert({ key, value: JSON.stringify(visible) }))
     }
     if (error) { showToast('Failed to save: ' + error.message, 'red'); return }
     showToast('Board visibility saved for Team ' + team.charAt(0).toUpperCase() + team.slice(1), 'green')
@@ -568,11 +605,11 @@ async function saveAdminPin() {
   if (!pin || pin.length < 4) { showToast('PIN must be at least 4 characters', 'red'); return }
   if (!supabase) { showToast('Supabase not connected', 'red'); return }
   try {
-    const payload = { key: 'admin_pin', value: pin, updated_by: currentUser?.name || 'Admin', updated_at: new Date().toISOString() }
+    const payload = { key: 'admin_pin', value: pin }
     const { data: existing } = await supabase.from('app_settings').select('id').eq('key', 'admin_pin').maybeSingle()
     let error
     if (existing) {
-      ({ error } = await supabase.from('app_settings').update(payload).eq('key', 'admin_pin'))
+      ({ error } = await supabase.from('app_settings').update({ value: pin }).eq('key', 'admin_pin'))
     } else {
       ({ error } = await supabase.from('app_settings').insert(payload))
     }

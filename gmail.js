@@ -11,25 +11,56 @@ let _gmailPollStartedAt = 0   // timestamp of last poll start
 let _gmailPollLockTimeout = null // safety timeout to auto-reset lock
 const _gmailAutoFetchedContacts = new Set() // tracks contacts already backfilled this session
 
-// Account definitions (email → short label)
-const GMAIL_ACCOUNT_DEFS = [
+// Legacy hardcoded accounts (used as fallback if no dynamic accounts configured)
+const GMAIL_LEGACY_DEFS = [
   { key: 'gmail_mbemb', email: 'matt@eugenebrokers.com',         label: 'MBEMB' },
   { key: 'gmail_mbbmb', email: 'matt@bendmortgagebrokers.com',   label: 'MBBMB' },
   { key: 'gmail_cs',    email: 'chandler@bendmortgagebrokers.com', label: 'CS'   },
   { key: 'gmail_by',    email: 'brian@eugenebrokers.com',         label: 'BY'   },
 ]
 
+// Dynamic accounts loaded from Supabase (populated by loadGmailAccounts)
+let _gmailDynamicAccounts = []
+
+// Returns the active account list — dynamic if available, else legacy fallback
+function getGmailAccounts() {
+  if (_gmailDynamicAccounts.length > 0) return _gmailDynamicAccounts
+  // Legacy fallback: build from hardcoded defs + config passwords
+  const cfg = loadConfig() || {}
+  return GMAIL_LEGACY_DEFS.filter(a => cfg[a.key + '_app_password']).map(a => ({
+    email: a.email,
+    label: a.label,
+    app_password: cfg[a.key + '_app_password'],
+    key: a.key
+  }))
+}
+
+// Load dynamic Gmail accounts from Supabase
+async function loadGmailAccounts() {
+  if (!supabase) return
+  try {
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'gmail_accounts').maybeSingle()
+    if (data?.value) {
+      const parsed = JSON.parse(data.value)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        _gmailDynamicAccounts = parsed
+        console.log('[Gmail] Loaded', parsed.length, 'dynamic accounts from Supabase')
+      }
+    }
+  } catch(e) { console.error('[Gmail] Error loading dynamic accounts:', e) }
+}
+
 // ─────────────────────────────────────────────
 //  Start / Stop
 // ─────────────────────────────────────────────
-function startGmailPoller() {
-  const cfg = loadConfig() || {}
-  const configured = GMAIL_ACCOUNT_DEFS.filter(a => cfg[a.key + '_app_password'])
-  if (configured.length === 0) {
-    console.log('[Gmail] No app passwords configured — skipping poller')
+async function startGmailPoller() {
+  await loadGmailAccounts()
+  const accounts = getGmailAccounts()
+  if (accounts.length === 0) {
+    console.log('[Gmail] No accounts configured — skipping poller')
     return
   }
-  console.log(`[Gmail] Starting poller for: ${configured.map(a=>a.label).join(', ')}`)
+  console.log(`[Gmail] Starting poller for: ${accounts.map(a=>a.label).join(', ')}`)
   pollGmailNow()
   _gmailPollTimer = setInterval(pollGmailNow, GMAIL_POLL_INTERVAL_MS)
 }
@@ -67,7 +98,7 @@ async function pollGmailNow() {
   }, 120_000)
 
   const cfg = loadConfig() || {}
-  const accounts = GMAIL_ACCOUNT_DEFS.filter(a => cfg[a.key + '_app_password'])
+  const accounts = getGmailAccounts()
 
   for (const acct of accounts) {
     try {
@@ -91,7 +122,9 @@ async function pollOneGmailAccount(acct, cfg) {
     return
   }
 
-  const lastPolledKey = acct.key + '_last_polled'
+  // Support both dynamic (app_password field) and legacy (config key) formats
+  const acctKey = acct.key || ('gmail_' + acct.label.toLowerCase())
+  const lastPolledKey = acctKey + '_last_polled'
   const lastPolled = cfg[lastPolledKey]
 
   // First run: 7 days back. After: since last poll
@@ -99,7 +132,9 @@ async function pollOneGmailAccount(acct, cfg) {
     ? new Date(lastPolled).toISOString()
     : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  const appPassword = cfg[acct.key + '_app_password']
+  const appPassword = acct.app_password || cfg[acctKey + '_app_password']
+  if (!appPassword) return
+
   console.log(`[Gmail] Fetching ${acct.label} (${acct.email}) since ${since}`)
 
   const messages = await window.electronAPI.gmailFetch({

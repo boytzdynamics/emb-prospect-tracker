@@ -473,8 +473,7 @@ body{font-family:'Nunito Sans',Segoe UI,sans-serif;background:#d4d8da;color:var(
     <div class="sb-team-pick show">
       <label>Viewing Team</label>
       <select class="sb-dd" onchange="switchTeamView(this.value)" id="team-select">
-        <option value="shad">👥 Team Shad</option>
-        <option value="lauren">👥 Team Lauren</option>
+        <!-- Populated dynamically in updateNavUser() -->
       </select>
     </div>
     <div class="sb-sec">THEIR BOARDS</div>
@@ -823,7 +822,8 @@ let supabase = null
 let currentUser = null
 let currentBoard = 'leads'
 let currentTeamView = 'my'
-let viewingTeam = 'shad'
+let viewingTeam = null // Set dynamically after currentUser loads
+const KNOWN_TEAMS = ['matt', 'shad', 'lauren']
 let contacts = []
 let refreshTimer = null
 let activeContactId = null
@@ -906,10 +906,12 @@ function isBoardVisible(boardName) {
   return visibleBoards.includes(boardName)
 }
 
-async function loadBoardVisibility() {
+async function loadBoardVisibility(teamOverride) {
   if (!supabase || !currentUser?.team) return
+  const team = teamOverride || ((currentUser?.role === 'admin' && currentTeamView === 'team' && viewingTeam) ? viewingTeam : currentUser.team)
   try {
-    const key = 'boards_visible_' + currentUser.team
+    visibleBoards = ['prospects','leads','closed','dead'] // Reset to default before loading
+    const key = 'boards_visible_' + team
     const { data, error } = await supabase.from('app_settings').select('value').eq('key', key).maybeSingle()
     if (error) { console.error('Failed to load board visibility:', error); return }
     if (data && data.value) {
@@ -917,7 +919,7 @@ async function loadBoardVisibility() {
         const parsed = JSON.parse(data.value)
         if (Array.isArray(parsed) && parsed.length > 0) {
           visibleBoards = parsed
-          console.log('Board visibility loaded for team', currentUser.team, ':', visibleBoards)
+          console.log('Board visibility loaded for team', team, ':', visibleBoards)
         }
       } catch(e) { console.error('Invalid board visibility JSON:', e) }
     }
@@ -1154,7 +1156,11 @@ function updateNavUser() {
   if (adminBtn) adminBtn.style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none'
   const av = document.getElementById('nav-avatar')
   av.textContent = currentUser.initials
-  av.className = 'nav-user-av ' + (currentUser.team || 'matt')
+  const TEAM_COLORS = { matt: '#3F80AA', shad: '#8B5CF6', lauren: '#E85D75' }
+  const avColor = TEAM_COLORS[currentUser.team] || '#3F80AA'
+  av.className = 'nav-user-av'
+  av.style.background = `linear-gradient(135deg, ${avColor}, ${avColor}dd)`
+  av.style.color = '#fff'
 
   // Role-based team visibility: LOs only see their own team
   const toggleRow = document.getElementById('sb-toggle-row')
@@ -1165,6 +1171,18 @@ function updateNavUser() {
     sbToggle('my')
   } else {
     if (toggleRow) toggleRow.style.display = ''
+    // Dynamically populate "Other Teams" dropdown excluding current user's team
+    const teamSelect = document.getElementById('team-select')
+    if (teamSelect) {
+      const otherTeams = KNOWN_TEAMS.filter(t => t !== currentUser.team)
+      teamSelect.innerHTML = otherTeams.map(t =>
+        `<option value="${t}">👥 Team ${t.charAt(0).toUpperCase()+t.slice(1)}</option>`
+      ).join('')
+      // Set viewingTeam to first available other team
+      if (!viewingTeam || viewingTeam === currentUser.team) {
+        viewingTeam = otherTeams[0] || null
+      }
+    }
   }
 
   // Show app version in nav badge
@@ -2512,7 +2530,7 @@ function saveSettings() {
 // ═══════════════════════════════════════════
 //  SIDEBAR + BOARD NAV
 // ═══════════════════════════════════════════
-function sbToggle(mode) {
+async function sbToggle(mode) {
   if (mode === 'team' && currentUser?.role !== 'admin') return
   currentTeamView = mode
   const myBtn = document.getElementById('sb-my-btn')
@@ -2524,18 +2542,23 @@ function sbToggle(mode) {
     myBtn.classList.add('on'); teamBtn.classList.remove('on')
     myNav.style.display = 'block'; teamNav.style.display = 'none'
     pill.style.display = 'none'
+    await loadBoardVisibility(currentUser.team)
   } else {
     teamBtn.classList.add('on'); myBtn.classList.remove('on')
     myNav.style.display = 'none'; teamNav.style.display = 'block'
     pill.style.display = 'inline-flex'
+    if (viewingTeam) await loadBoardVisibility(viewingTeam)
   }
+  renderSidebar()
   loadContacts()
 }
 
-function switchTeamView(team) {
+async function switchTeamView(team) {
   if (currentUser?.role !== 'admin') return
   viewingTeam = team
   document.getElementById('team-pill').textContent = team.charAt(0).toUpperCase()+team.slice(1)+' Team'
+  await loadBoardVisibility(team)
+  renderSidebar()
   loadContacts()
 }
 

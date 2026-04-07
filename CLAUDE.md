@@ -180,7 +180,7 @@ Global variables in the renderer:
 
 Settings persistence:
 - Electron userData path: `~/Library/Application Support/EMB Prospect Tracker/emb-settings.json` (macOS) or `%APPDATA%\EMB Prospect Tracker\emb-settings.json` (Windows)
-- Team/user lists: also in Electron userData (NOT localStorage)
+- Team/user lists: stored in localStorage (`emb_users` key) — per-machine, does not sync across machines
 
 ### Supabase Realtime
 

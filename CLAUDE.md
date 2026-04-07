@@ -17,6 +17,7 @@ Everything a Claude Code session needs to independently own and work on the Elec
 | IMAP | imap 0.8.19 (Gmail polling, main process) |
 | Mail parser | mailparser 3.6.5 (email header extraction) |
 | Builder | electron-builder 24.13.3 |
+| Auto-update | electron-updater 6.8.3 |
 | Node | Whatever Electron 28 bundles |
 
 **CRITICAL:** Supabase JS is loaded via a local UMD script tag from node_modules, NOT from a CDN. CDN loading fails silently in Electron's renderer process. Do not switch to CDN.
@@ -27,21 +28,25 @@ Everything a Claude Code session needs to independently own and work on the Elec
 
 ```
 emb-app/
-  main.js              (205 lines) Electron main process — window creation, IPC handlers, Gmail IMAP fetch
-  preload.js           (11 lines)  Context bridge — exposes limited API to renderer
-  config.js            (47 lines)  Constants — column IDs, default settings, API placeholders
-  index.html           (3089 lines) ENTIRE app UI + logic — HTML, CSS, JavaScript all in one file
-  admin.js             (436 lines) Admin panel UI generation + settings management
-  gmail.js             (363 lines) Gmail IMAP connection, polling, log writing
-  package.json                     Dependencies + electron-builder config
+  main.js              Electron main process — window creation, IPC handlers, Gmail IMAP fetch, auto-update
+  preload.js           Context bridge — exposes limited API to renderer (including update APIs)
+  config.js            Constants — column IDs, pre-baked Supabase/Claude credentials
+  index.html           ENTIRE app UI + logic — HTML, CSS, JavaScript all in one file
+  admin.js             Admin panel UI generation + settings management
+  gmail.js             Gmail IMAP connection, polling, log writing
+  package.json         Dependencies + electron-builder + NSIS + GitHub publish config
   package-lock.json
   README.md
   CLAUDE_CODE_HANDOFF.md           Legacy handoff doc (superseded by this file)
   email2_migration.sql             SQL to add email2 + notes_summary columns
   gmail_log_migration.sql          SQL to create gmail_log table
+  coborrower_migration.sql         SQL to add co-borrower fields
+  .github/workflows/build-win.yml  GitHub Actions — builds Windows NSIS installer on version tags
+  .gitignore
   assets/
     icon.icns                      App icon (macOS)
-  dist/                            Build output (DMG, Windows exe)
+    icon.ico                       App icon (Windows)
+  dist/                            Build output (local builds only — CI builds go to GitHub Releases)
   node_modules/
 ```
 
@@ -79,19 +84,37 @@ npm install
 # Run in development
 npm start           # or: npm run dev (adds --dev flag)
 
-# Build for distribution
+# Build for distribution (local — Mac only, Windows cross-compile fails on Apple Silicon)
 npm run build-mac   # macOS DMG (arm64 + x64)
-npm run build-win   # Windows (x64 only, may fail on arm64 Mac — rcedit issue)
-npm run build-all   # Both platforms
 
 # No test suite exists. Manual testing only.
 # No linter configured.
 ```
 
-**Build output:** `dist/` directory. Mac DMGs, Windows `win-unpacked/` folder.
+### Windows Build & Release (via GitHub Actions)
+
+Windows builds use GitHub Actions (cannot cross-compile from Apple Silicon Mac).
+
+```bash
+# 1. Bump version in package.json
+# 2. Commit and push
+git add -A && git commit -m "v1.X.Y: description"
+git push origin main
+
+# 3. Tag and push — this triggers the GitHub Actions build
+git tag v1.X.Y
+git push origin v1.X.Y
+
+# 4. GitHub Actions builds NSIS installer on windows-latest
+#    and creates a GitHub Release with the .exe, latest.yml, and blockmap
+#    at: https://github.com/boytzdynamics/emb-prospect-tracker/releases
+```
+
+Installed copies auto-update from GitHub Releases on launch.
 
 **App ID:** com.eugenemb.tracker
 **Product Name:** EMB Prospect Tracker
+**GitHub Repo:** https://github.com/boytzdynamics/emb-prospect-tracker
 
 ---
 
@@ -121,6 +144,9 @@ window.electronAPI = {
   settingsSave(data)     // Write settings JSON to disk
   settingsPath()         // Get settings file path
   gmailFetch(accounts)   // Trigger IMAP fetch from main process
+  getAppVersion()        // Returns app version from package.json
+  checkForUpdates()      // Manually trigger update check
+  onUpdateStatus(cb)     // Listen for auto-update events (available, downloaded)
 }
 ```
 
@@ -199,9 +225,15 @@ Runs in the main process (Node.js). Key behaviors:
 
 Single window, no menu bar customization beyond defaults. DevTools blocked via `beforeInputEvent` handler (F12 intercepted).
 
-### Auto-Update
+### Auto-Update (Windows only)
 
-Not implemented. Distribution is manual (DMG / zip).
+Uses `electron-updater` with GitHub Releases as the update server.
+- Checks for updates 5 seconds after launch (Windows only, skipped on macOS)
+- Downloads in background, then shows native dialog: "Restart Now" / "Later"
+- Auto-installs on app quit if user chose "Later"
+- Renderer receives update status via `onUpdateStatus` IPC — nav badge shows "Updating..." and "vX.Y.Z ready"
+- Requires NSIS installer (not `dir` target) — configured in package.json
+- GitHub repo: `boytzdynamics/emb-prospect-tracker` (public, no token needed)
 
 ### Settings Storage
 
@@ -227,6 +259,10 @@ All settings stored as JSON on disk via Electron IPC. Never use localStorage for
 **Additional changes completed:**
 11. ✅ **Co-borrower / secondary contact fields** — phone2, email2, co_first_name, co_last_name added to new prospect form, detail modal (view + edit), card display, SMS matching, duplicate detection, and AI auto-fill parser. Requires `coborrower_migration.sql` to be run in Supabase.
 12. ✅ **Default board changed to Leads** — App opens to Leads board, Leads above Prospects in sidebar.
+13. ✅ **Role-based team visibility** — LO users only see their own team. "Other Teams" toggle hidden for non-admins. `sbToggle()`, `switchTeamView()`, and `loadContacts()` all guarded.
+14. ✅ **Simplified setup flow** — New users enter name, initials, role, team, and Unite credentials. Supabase URL/key and Claude API key pre-baked in `config.js`. Advanced credentials collapsed by default.
+15. ✅ **Windows NSIS installer** — One-click installer with desktop shortcut and Start Menu entry. Built via GitHub Actions on version tags.
+16. ✅ **Auto-update** — `electron-updater` checks GitHub Releases on Windows launch. Downloads in background, prompts restart.
 
 ---
 
@@ -244,7 +280,7 @@ All settings stored as JSON on disk via Electron IPC. Never use localStorage for
 
 6. **IMAP body parsing disabled** — Only headers fetched (subject, from, to, date). Snippets come from subject line. Full body fetch was too slow for 200 messages.
 
-7. **Config.js has placeholder values** — SUPABASE_URL, CLAUDE_API_KEY etc. are "YOUR_..." placeholders. Real values come from settings JSON on disk.
+7. **Config.js has pre-baked credentials** — Supabase URL/key and Claude API key are embedded for team deployment. Unite credentials are per-user (entered in setup).
 
 8. **No retry logic for Unite API** — Single fetch attempt, logs error on failure.
 

@@ -4,7 +4,7 @@
 
 function renderAdminPanel() {
   const cfg = loadConfig() || {}
-  if (cfg.user_role !== 'admin') return
+  if (cfg.user_role !== 'admin' && !adminModeActive) return
 
   showSimpleModal('⚙️ ADMIN SETTINGS', `
     <div style="padding:0">

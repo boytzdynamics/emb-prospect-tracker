@@ -13,7 +13,7 @@ const CONFIG = {
 
   // Unite API — per-user, entered during setup
   UNIT_API_KEY: '',
-  UNIT_PHONE_NUMBER: ''
+  UNIT_PHONE_NUMBER: '',
 
   // App settings
   FOLLOWUP_DEFAULT_DAYS: 2,

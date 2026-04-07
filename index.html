@@ -2978,11 +2978,8 @@ async function pollUniteMessages() {
       if (!msgId) continue
 
       const isInbound = (record.direction || '') === 'in' || record.isInbound === true
-      // Try to extract the LO/account phone number from various possible API fields
-      const accountPhone = record.userPhoneNumber || record.localNumber || record.userNumber
-        || record.accountPhoneNumber || record.owner_phone || record.line
-        || (isInbound ? (record.to || record.toNumber || record.destinationNumber) : (record.from || record.fromNumber || record.sourceNumber))
-        || ''
+      // Unite API only returns: uuid, jid, phoneNumber, direction, id, dateTime, subtype, text
+      // No separate LO/local phone field — jid identifies the line but isn't a phone number
       const msg = {
         id: String(msgId),
         contact_id: contact.id,
@@ -2992,12 +2989,18 @@ async function pollUniteMessages() {
         timestamp: record.dateTime || record.timestamp || record.sentAt || new Date().toISOString(),
         subtype: record.subtype || 'sms',
         team: currentUser?.team || 'matt',
-        account_phone: accountPhone || null
+        account_phone: null
       }
 
-      const { error } = await supabase
+      // Try upsert with account_phone; if column doesn't exist, retry without it
+      let { error } = await supabase
         .from('sms_messages')
         .upsert(msg, { onConflict: 'id', ignoreDuplicates: true })
+      if (error && error.message?.includes('account_phone')) {
+        delete msg.account_phone
+        ;({ error } = await supabase.from('sms_messages').upsert(msg, { onConflict: 'id', ignoreDuplicates: true }))
+        if (!window._smsColWarned) { console.warn('SMS: account_phone column not found — run sms_account_phone_migration.sql'); window._smsColWarned = true }
+      }
       if (error) { console.error('SMS upsert error:', error.message); continue }
       inserted++
 

@@ -41,6 +41,7 @@ emb-app/
   email2_migration.sql             SQL to add email2 + notes_summary columns
   gmail_log_migration.sql          SQL to create gmail_log table
   coborrower_migration.sql         SQL to add co-borrower fields
+  sms_account_phone_migration.sql  SQL to add account_phone column to sms_messages
   .github/workflows/build-win.yml  GitHub Actions — builds Windows NSIS installer on version tags
   .gitignore
   assets/
@@ -56,12 +57,13 @@ The entire app is a single `index.html` file. Key sections:
 
 - **Lines 1-800:** CSS styles (embedded `<style>` block) — color variables, layout, cards, modals, boards
 - **Lines 800-900:** HTML structure — nav, sidebar, board containers, modal templates
-- **Lines 900-3089:** JavaScript `<script>` block — all app logic
+- **Lines 900-3300+:** JavaScript `<script>` block — all app logic
 
 Key functions in the script block:
 - `init()` — App initialization, load settings, connect Supabase, fetch data, start realtime
 - `renderBoard()` — Renders kanban columns and cards for current board
 - `renderCard()` — Generates HTML for a single contact card
+- `renderSidebar()` — Builds sidebar nav, respecting per-team board visibility
 - `openCardModal()` — Opens the contact detail modal
 - `openNewModal()` — Opens the new prospect creation modal
 - `logContact()` — Records a contact log entry
@@ -70,6 +72,9 @@ Key functions in the script block:
 - `generateNotesSummary()` — Calls Claude API for AI note summary
 - `pollGmail()` — Triggers Gmail IMAP fetch via IPC
 - `pollSMS()` — Fetches Unite SMS history
+- `loadBoardVisibility()` — Loads per-team board visibility from Supabase
+- `loadUnitePhones()` — Loads multi-LO phone config from Supabase
+- `showAdminPinModal()` / `verifyAdminPin()` — Admin PIN entry system
 - `escHtml()` — HTML escaping utility
 
 ---
@@ -169,6 +174,9 @@ Global variables in the renderer:
 - `currentUser` — Current user config
 - `supabase` — Supabase client instance
 - `cfg` — Loaded config object
+- `visibleBoards[]` — Per-team list of visible board names (from Supabase)
+- `adminModeActive` — Boolean, true if admin PIN was entered this session
+- `unitePhones[]` — Array of `{phone, initials, name}` for multi-LO SMS display
 
 Settings persistence:
 - Electron userData path: `~/Library/Application Support/EMB Prospect Tracker/emb-settings.json` (macOS) or `%APPDATA%\EMB Prospect Tracker\emb-settings.json` (Windows)
@@ -263,12 +271,16 @@ All settings stored as JSON on disk via Electron IPC. Never use localStorage for
 14. ✅ **Simplified setup flow** — New users enter name, initials, role, team, and Unite credentials. Supabase URL/key and Claude API key pre-baked in `config.js`. Advanced credentials collapsed by default.
 15. ✅ **Windows NSIS installer** — One-click installer with desktop shortcut and Start Menu entry. Built via GitHub Actions on version tags.
 16. ✅ **Auto-update** — `electron-updater` checks GitHub Releases on Windows launch. Downloads in background, prompts restart.
+17. ✅ **Admin PIN portal** — `Ctrl+Shift+A` opens PIN prompt on any machine. Correct PIN (stored in Supabase `app_settings` key `admin_pin`, default `8702`) temporarily elevates to admin for the session. Resets on restart.
+18. ✅ **Per-team board visibility** — Admins can hide/show boards per team from admin panel "Boards" tab. Stored in Supabase `app_settings` key `boards_visible_{team}`. Hidden boards removed from sidebar, move modal, card action buttons (Move to Leads, Restore, Mark Dead).
+19. ✅ **Multi-LO Unite phone numbers** — Multiple phone numbers with LO initials stored in `app_settings` key `unite_phones`. Managed from Admin > Integrations. SMS thread display shows initials badge next to each message. Requires `sms_account_phone_migration.sql`.
+20. ✅ **AI auto-fill paste button cleanup** — Removed Ctrl+V/⌘V wording from paste button and hint text. Button now just says "Paste Image".
 
 ---
 
 ## Known Issues & Tech Debt
 
-1. **index.html is 3089 lines** — Entire app in one file. Works but hard to navigate. No plans to split unless explicitly requested.
+1. **index.html is 3300+ lines** — Entire app in one file. Works but hard to navigate. No plans to split unless explicitly requested.
 
 2. **CSV import parser is fragile** — Simple `split(',')` doesn't handle quoted fields with commas. Works for simple CSVs.
 

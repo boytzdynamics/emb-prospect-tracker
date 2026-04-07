@@ -1074,7 +1074,7 @@ async function init() {
     loadContacts()
 
     // Start auto-refresh
-    refreshTimer = setInterval(refreshData, CONFIG.REFRESH_INTERVAL_MS || 120000)
+    refreshTimer = setInterval(refreshData, (typeof CONFIG !== 'undefined' && CONFIG.REFRESH_INTERVAL_MS) || 120000)
     
     // Start Unite SMS poller
     startUnitePoller()

@@ -275,6 +275,48 @@ All settings stored as JSON on disk via Electron IPC. Never use localStorage for
 18. ✅ **Per-team board visibility** — Admins can hide/show boards per team from admin panel "Boards" tab. Stored in Supabase `app_settings` key `boards_visible_{team}`. Hidden boards removed from sidebar, move modal, card action buttons (Move to Leads, Restore, Mark Dead).
 19. ✅ **Multi-LO Unite phone numbers** — Multiple phone numbers with LO initials stored in `app_settings` key `unite_phones`. Managed from Admin > Integrations. SMS thread display shows initials badge next to each message. Requires `sms_account_phone_migration.sql`.
 20. ✅ **AI auto-fill paste button cleanup** — Removed Ctrl+V/⌘V wording from paste button and hint text. Button now just says "Paste Image".
+21. ✅ **Nav bar Windows overlap fix** — Added 140px right padding so Windows title bar controls (min/max/close) don't overlap admin button and version badge.
+22. ✅ **Admin PIN actually unlocks panel** — `renderAdminPanel()` now checks in-memory `adminModeActive` flag in addition to saved config role.
+23. ✅ **Dynamic team sidebar** — Bottom-left team label and LO icons are dynamic. Shows current user's team name + team members from Users list. Falls back to current user's initials for unconfigured teams.
+
+---
+
+## Team Deployment Guide
+
+The app is designed for multi-team deployment across EMB and BMB. One Supabase database serves all teams. Each team gets their own Windows machines with the app installed.
+
+### Pre-Baked Credentials (users never see these)
+- Supabase URL + anon key → `config.js`
+- Claude API key → `config.js`
+
+### Per-Machine Setup (first launch)
+Each user enters during the setup wizard:
+- Name, initials, role (LO), team
+- Unite Client ID + Secret (company-wide, same for all machines)
+
+### Admin Remote Access
+On any LO's machine: `Ctrl+Shift+A` → enter PIN (default: `8702`) → full admin panel access for the session. Resets on app restart. PIN stored in Supabase `app_settings` (key: `admin_pin`), changeable from Admin > Boards tab.
+
+### Per-Team Configuration (set once from admin panel)
+From any machine with admin access:
+1. **Boards tab** — Hide/show boards per team. Stored in Supabase (`boards_visible_{team}`). All machines for that team respect it immediately.
+2. **Integrations tab** — Add LO phone numbers with initials for SMS thread display. Stored in Supabase (`unite_phones`).
+3. **Users tab** — Add team members (name, initials, color). Shown in sidebar bottom. Currently stored in localStorage (per-machine).
+
+### New Team Deployment Checklist
+1. Download latest installer from [GitHub Releases](https://github.com/boytzdynamics/emb-prospect-tracker/releases)
+2. Install on each team member's Windows PC
+3. First launch: user enters name, initials, role=LO, team, Unite credentials
+4. On one machine: `Ctrl+Shift+A` → PIN `8702` to access admin
+5. Admin > Boards: configure which boards this team sees
+6. Admin > Integrations: add LO phone numbers with initials
+7. Admin > Users: add team members (for sidebar display)
+8. App auto-updates from GitHub Releases going forward
+
+### Supabase Migrations Required
+Run these in the Supabase SQL editor before deploying new features:
+- `coborrower_migration.sql` — Co-borrower fields
+- `sms_account_phone_migration.sql` — Multi-LO SMS phone tracking
 
 ---
 

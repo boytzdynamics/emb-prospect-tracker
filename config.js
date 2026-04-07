@@ -4,16 +4,16 @@
 // ─────────────────────────────────────────────
 
 const CONFIG = {
-  // Supabase
-  SUPABASE_URL: 'YOUR_SUPABASE_URL',
-  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
+  // Supabase (pre-configured for team deployment)
+  SUPABASE_URL: 'https://osygjjljpdpltjtuklvj.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zeWdqamxqcGRwbHRqdHVrbHZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMDIzODcsImV4cCI6MjA4OTg3ODM4N30.LmSJ8IKkijGN2Tqp6DOFhvAs7K0v65TAoUak73-oM2g',
 
-  // Claude AI (shared key)
-  CLAUDE_API_KEY: 'YOUR_CLAUDE_API_KEY',
+  // Claude AI (shared key, pre-configured)
+  CLAUDE_API_KEY: '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',
 
-  // Unit API (phone/text)
-  UNIT_API_KEY: 'YOUR_UNIT_API_KEY',
-  UNIT_PHONE_NUMBER: 'YOUR_UNIT_SHARED_PHONE_NUMBER', // e.g. +15415551234
+  // Unite API — per-user, entered during setup
+  UNIT_API_KEY: '',
+  UNIT_PHONE_NUMBER: ''
 
   // App settings
   FOLLOWUP_DEFAULT_DAYS: 2,

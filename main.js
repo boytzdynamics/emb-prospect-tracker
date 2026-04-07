@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron')
+const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
 
@@ -33,7 +34,44 @@ function createWindow() {
   })
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  createWindow()
+
+  // Auto-update (Windows NSIS only)
+  if (process.platform === 'win32') {
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+
+    autoUpdater.on('update-available', (info) => {
+      mainWindow?.webContents.send('update-status', { status: 'available', version: info.version })
+    })
+
+    autoUpdater.on('update-downloaded', (info) => {
+      mainWindow?.webContents.send('update-status', { status: 'downloaded', version: info.version })
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Update Ready',
+        message: `Version ${info.version} has been downloaded.`,
+        detail: 'The update will be installed when you restart the app.',
+        buttons: ['Restart Now', 'Later'],
+        defaultId: 0
+      }).then(({ response }) => {
+        if (response === 0) autoUpdater.quitAndInstall()
+      })
+    })
+
+    autoUpdater.on('error', (err) => {
+      console.error('[Update] Error:', err.message)
+    })
+
+    // Check for updates 5 seconds after launch
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch(err =>
+        console.error('[Update] Check failed:', err.message)
+      )
+    }, 5000)
+  }
+})
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 
@@ -52,6 +90,16 @@ ipcMain.handle('settings-save', (event, settings) => {
   catch(e) { console.error('Settings save error:', e); return false }
 })
 ipcMain.handle('settings-path', () => settingsPath)
+ipcMain.handle('get-app-version', () => app.getVersion())
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates()
+    return { version: result?.updateInfo?.version || null }
+  } catch (e) {
+    console.error('[Update] Manual check failed:', e.message)
+    return { error: e.message }
+  }
+})
 
 // ── Gmail IMAP fetch (Node.js side — has access to imap library)
 ipcMain.handle('gmail-fetch', async (event, { email, appPassword, since, searchEmail }) => {

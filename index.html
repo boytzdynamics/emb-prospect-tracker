@@ -388,22 +388,33 @@ body{font-family:'Nunito Sans',Segoe UI,sans-serif;background:#d4d8da;color:var(
       <div class="setup-sub">Connect your Supabase + configure your account</div>
     </div>
     <div class="setup-body">
-      <div class="frow"><div class="ff"><label>Supabase URL</label><input id="setup-sb-url" placeholder="https://xxxx.supabase.co" /></div></div>
-      <div class="frow"><div class="ff"><label>Supabase Anon Key</label><input id="setup-sb-key" placeholder="eyJ..." type="password" /></div></div>
-      <div class="frow"><div class="ff"><label>Claude API Key</label><input id="setup-claude-key" placeholder="sk-ant-..." type="password" /></div></div>
-      <div class="frow"><div class="ff"><label>Unite API Key (optional)</label><input id="setup-unite-key" placeholder="Leave blank to skip" /></div></div>
-      <div class="frow"><div class="ff"><label>Unite Shared Phone Number</label><input id="setup-unite-phone" placeholder="+15415551234" /></div></div>
       <div class="frow">
-        <div class="ff"><label>Your Name</label><input id="setup-name" placeholder="Matt" /></div>
-        <div class="ff"><label>Your Role</label>
-          <select id="setup-role"><option value="admin">Admin (Super Admin)</option><option value="lo">Loan Officer</option></select>
-        </div>
+        <div class="ff"><label>Your Name</label><input id="setup-name" placeholder="First Last" /></div>
+        <div class="ff"><label>Your Initials</label><input id="setup-initials" placeholder="FL" maxlength="2" /></div>
       </div>
       <div class="frow">
+        <div class="ff"><label>Your Role</label>
+          <select id="setup-role"><option value="lo" selected>Loan Officer</option><option value="admin">Admin (Super Admin)</option></select>
+        </div>
         <div class="ff"><label>Your Team</label>
           <select id="setup-team"><option value="matt">Team Matt</option><option value="shad">Team Shad</option><option value="lauren">Team Lauren</option></select>
         </div>
-        <div class="ff"><label>Your Initials</label><input id="setup-initials" placeholder="M" maxlength="2" /></div>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,.08);margin:12px 0;padding-top:12px">
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1px;margin-bottom:8px">UNITE SMS INTEGRATION</div>
+      </div>
+      <div class="frow">
+        <div class="ff"><label>Unite Client ID</label><input id="setup-unite-key" placeholder="Your Unite client ID" /></div>
+        <div class="ff"><label>Unite Client Secret</label><input id="setup-unite-secret" placeholder="Your Unite client secret" type="password" /></div>
+      </div>
+      <div class="frow"><div class="ff"><label>Unite Phone Number</label><input id="setup-unite-phone" placeholder="+15415551234" /></div></div>
+      <div style="margin-top:12px">
+        <button type="button" onclick="document.getElementById('setup-advanced').style.display=document.getElementById('setup-advanced').style.display==='none'?'block':'none'" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px;padding:0">▸ ADVANCED CREDENTIALS</button>
+        <div id="setup-advanced" style="display:none;margin-top:8px">
+          <div class="frow"><div class="ff"><label>Supabase URL</label><input id="setup-sb-url" placeholder="Pre-configured — leave blank for default" /></div></div>
+          <div class="frow"><div class="ff"><label>Supabase Anon Key</label><input id="setup-sb-key" placeholder="Pre-configured — leave blank for default" type="password" /></div></div>
+          <div class="frow"><div class="ff"><label>Claude API Key</label><input id="setup-claude-key" placeholder="Pre-configured — leave blank for default" type="password" /></div></div>
+        </div>
       </div>
     </div>
     <div class="setup-footer">
@@ -444,7 +455,7 @@ body{font-family:'Nunito Sans',Segoe UI,sans-serif;background:#d4d8da;color:var(
       <div class="sb-logo">EMB</div>
       <div><div class="sb-name">EUGENE <span>MB</span></div><div class="sb-sub">Prospect Tracker</div></div>
     </div>
-    <div class="sb-toggle">
+    <div class="sb-toggle" id="sb-toggle-row">
       <button class="sb-tbtn on" id="sb-my-btn" onclick="sbToggle('my')">My Team</button>
       <button class="sb-tbtn" id="sb-team-btn" onclick="sbToggle('team')">Other Teams</button>
     </div>
@@ -895,6 +906,20 @@ async function init() {
 
     updateNavUser()
 
+    // Listen for auto-update status
+    if (window.electronAPI?.onUpdateStatus) {
+      window.electronAPI.onUpdateStatus((data) => {
+        const badge = document.getElementById('nav-badge')
+        if (!badge) return
+        if (data.status === 'available') badge.textContent = 'Updating...'
+        if (data.status === 'downloaded') {
+          badge.textContent = 'v' + data.version + ' ready'
+          badge.style.background = 'rgba(97,192,140,.25)'
+          badge.style.color = '#61C08C'
+        }
+      })
+    }
+
     // Fix paste button labels for Windows (Ctrl+V instead of ⌘V)
     const isMac = window.electronAPI?.platform === 'darwin'
     if (!isMac) {
@@ -975,18 +1000,19 @@ function saveConfig(cfg) {
 }
 
 function saveSetup() {
+  const name = document.getElementById('setup-name').value.trim()
+  if (!name) { showToast('Please enter your name', 'red'); return }
   const cfg = {
-    supabase_url: document.getElementById('setup-sb-url').value.trim(),
-    supabase_anon_key: document.getElementById('setup-sb-key').value.trim(),
-    claude_api_key: document.getElementById('setup-claude-key').value.trim(),
-    unit_api_key: document.getElementById('setup-unite-key').value.trim(),
+    supabase_url: document.getElementById('setup-sb-url').value.trim() || CONFIG.SUPABASE_URL,
+    supabase_anon_key: document.getElementById('setup-sb-key').value.trim() || CONFIG.SUPABASE_ANON_KEY,
+    claude_api_key: document.getElementById('setup-claude-key').value.trim() || CONFIG.CLAUDE_API_KEY,
     unite_client_id: document.getElementById('setup-unite-key').value.trim(),
-    unite_client_secret: document.getElementById('setup-unit-secret')?.value?.trim() || '',
+    unite_client_secret: document.getElementById('setup-unite-secret')?.value?.trim() || '',
     unit_phone: document.getElementById('setup-unite-phone').value.trim(),
-    user_name: document.getElementById('setup-name').value.trim() || 'Matt',
+    user_name: name,
     user_role: document.getElementById('setup-role').value,
     user_team: document.getElementById('setup-team').value,
-    user_initials: document.getElementById('setup-initials').value.trim().toUpperCase() || 'M'
+    user_initials: document.getElementById('setup-initials').value.trim().toUpperCase() || name.charAt(0).toUpperCase()
   }
   saveConfig(cfg)
   document.getElementById('setup-screen').classList.remove('show')
@@ -1001,6 +1027,25 @@ function updateNavUser() {
   const av = document.getElementById('nav-avatar')
   av.textContent = currentUser.initials
   av.className = 'nav-user-av ' + (currentUser.team || 'matt')
+
+  // Role-based team visibility: LOs only see their own team
+  const toggleRow = document.getElementById('sb-toggle-row')
+  const teamNav = document.getElementById('sb-team-nav')
+  if (currentUser.role !== 'admin') {
+    if (toggleRow) toggleRow.style.display = 'none'
+    if (teamNav) teamNav.style.display = 'none'
+    sbToggle('my')
+  } else {
+    if (toggleRow) toggleRow.style.display = ''
+  }
+
+  // Show app version in nav badge
+  if (window.electronAPI?.getAppVersion) {
+    window.electronAPI.getAppVersion().then(v => {
+      const badge = document.getElementById('nav-badge')
+      if (badge) badge.textContent = 'v' + v
+    })
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1021,7 +1066,7 @@ async function loadContacts() {
     }
 
     if (supabase) {
-      const team = currentTeamView === 'my' ? (currentUser?.team || 'matt') : viewingTeam
+      const team = (currentUser?.role !== 'admin' || currentTeamView === 'my') ? (currentUser?.team || 'matt') : viewingTeam
       console.log('Loading contacts for team:', team)
       
       const { data, error } = await supabase
@@ -2301,6 +2346,7 @@ function saveSettings() {
 //  SIDEBAR + BOARD NAV
 // ═══════════════════════════════════════════
 function sbToggle(mode) {
+  if (mode === 'team' && currentUser?.role !== 'admin') return
   currentTeamView = mode
   const myBtn = document.getElementById('sb-my-btn')
   const teamBtn = document.getElementById('sb-team-btn')
@@ -2320,6 +2366,7 @@ function sbToggle(mode) {
 }
 
 function switchTeamView(team) {
+  if (currentUser?.role !== 'admin') return
   viewingTeam = team
   document.getElementById('team-pill').textContent = team.charAt(0).toUpperCase()+team.slice(1)+' Team'
   loadContacts()

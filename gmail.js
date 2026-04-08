@@ -164,7 +164,7 @@ async function pollOneGmailAccount(acct, cfg) {
 async function fetchGmailForContact(contact, daysBack) {
   if (!window.electronAPI?.gmailFetch) return
   const cfg = loadConfig() || {}
-  const accounts = GMAIL_ACCOUNT_DEFS.filter(a => cfg[a.key + '_app_password'])
+  const accounts = getGmailAccounts()
   if (accounts.length === 0) return
 
   // All email addresses on this contact (lowercased)

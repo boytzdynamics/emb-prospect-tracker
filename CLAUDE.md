@@ -375,7 +375,7 @@ Settings JSON structure:
     "matt@eugenebrokers.com": "xxxx xxxx xxxx xxxx",
     ...
   },
-  default_followup_days: 2
+  followup_default_days: 2
 }
 ```
 

@@ -1937,7 +1937,7 @@ async function saveQuickNote(id) {
   }
 
   // Reset follow-up clock (+2 business days) and clear needs_response — all log types do this
-  const days = (loadConfig()||{}).default_followup_days || 2
+  const days = (loadConfig()||{}).followup_default_days || 2
   const newFuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
 
   if (supabase) {
@@ -2055,7 +2055,7 @@ async function saveNote(id) {
   }
 
   // Reset follow-up clock (+2 business days) and clear needs_response
-  const days = (loadConfig()||{}).default_followup_days || 2
+  const days = (loadConfig()||{}).followup_default_days || 2
   const newFuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
 
   if (supabase) {
@@ -2434,7 +2434,7 @@ async function sendSMSFromModal(contactId) {
     if (error) { showToast('Save failed: ' + error.message, 'red') }
     const days = (loadConfig()||{}).followup_default_days||2
     const newFuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
-    await supabase.from('contacts').update({followup_date:newFuDate, followup_mode:'auto', updated_at:new Date().toISOString()}).eq('id',contactId)
+    await supabase.from('contacts').update({followup_date:newFuDate, followup_mode:'auto', needs_response:false, updated_at:new Date().toISOString()}).eq('id',contactId)
   } else { const con = contacts.find(x=>x.id===contactId); if(con){if(!con.contact_log)con.contact_log=[];con.contact_log.push(logEntry)} }
   showToast('Message sent ✓', 'green')
   await loadSMSThread(contactId)
@@ -2816,9 +2816,9 @@ async function sendEmailFromCard(contactId) {
       if (error) { showToast('Save failed: ' + error.message, 'red') }
       const days = (loadConfig()||{}).followup_default_days||2
       const newFuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
-      await supabase.from('contacts').update({followup_date:newFuDate, followup_mode:'auto', updated_at:new Date().toISOString()}).eq('id',contactId)
+      await supabase.from('contacts').update({followup_date:newFuDate, followup_mode:'auto', needs_response:false, updated_at:new Date().toISOString()}).eq('id',contactId)
     } else { const con = contacts.find(x=>x.id===contactId); if(con){if(!con.contact_log)con.contact_log=[];con.contact_log.push(logEntry)} }
-    
+
     showToast(`Email sent to ${c.email} ✓`, 'green')
     await loadContacts()
   } catch(e) {

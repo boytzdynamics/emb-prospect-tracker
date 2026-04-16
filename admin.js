@@ -568,13 +568,7 @@ async function saveBoardVisibility() {
   if (!supabase) { showToast('Supabase not connected', 'red'); return }
   try {
     const key = 'boards_visible_' + team
-    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', key).maybeSingle()
-    let error
-    if (existing) {
-      ({ error } = await supabase.from('app_settings').update({ value: JSON.stringify(visible) }).eq('key', key))
-    } else {
-      ({ error } = await supabase.from('app_settings').insert({ key, value: JSON.stringify(visible) }))
-    }
+    const { error } = await supabase.from('app_settings').upsert({ key, value: JSON.stringify(visible) }, { onConflict: 'key' })
     if (error) { showToast('Failed to save: ' + error.message, 'red'); return }
     showToast('Board visibility saved for Team ' + team.charAt(0).toUpperCase() + team.slice(1), 'green')
     // If saving for current user's team, update live state

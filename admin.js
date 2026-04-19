@@ -18,7 +18,10 @@ function renderAdminPanel() {
       <div id="apanel-0" style="padding:20px">
         <div class="frow"><div class="ff"><label>Your Name</label><input id="a-name" value="${cfg.user_name||''}" /></div><div class="ff"><label>Initials</label><input id="a-initials" value="${cfg.user_initials||''}" maxlength="2" /></div></div>
         <div class="frow"><div class="ff"><label>Role</label><select id="a-role"><option value="admin" ${cfg.user_role==='admin'?'selected':''}>Admin</option><option value="lo" ${cfg.user_role==='lo'?'selected':''}>Loan Officer</option></select></div><div class="ff"><label>Team</label><select id="a-team"><option value="matt" ${cfg.user_team==='matt'?'selected':''}>Team Matt</option><option value="tari" ${cfg.user_team==='tari'?'selected':''}>Team Tari</option><option value="lauren" ${cfg.user_team==='lauren'?'selected':''}>Team Lauren</option></select></div></div>
-        <button class="btn-p" onclick="saveAdminProfile()" style="margin-top:8px">Save Profile</button>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <button class="btn-p" onclick="saveAdminProfile()">Save Profile</button>
+          <button onclick="doLogout()" style="background:transparent;border:1.5px solid #e0e4e6;color:#888;padding:8px 14px;border-radius:8px;font-family:inherit;font-size:11px;font-weight:800;letter-spacing:1px;cursor:pointer;margin-left:auto" onmouseover="this.style.borderColor='#ea4335';this.style.color='#ea4335'" onmouseout="this.style.borderColor='#e0e4e6';this.style.color='#888'">SIGN OUT</button>
+        </div>
       </div>
 
       <!-- 1: Users -->

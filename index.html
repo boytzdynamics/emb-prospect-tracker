@@ -817,6 +817,24 @@ body.is-dragging .card:not(.is-dragging){transition:transform .15s ease;}
   </div>
 </div>
 
+<!-- LOGIN SCREEN -->
+<div class="setup-screen" id="login-screen">
+  <div class="setup-card" style="width:420px">
+    <div class="setup-hd">
+      <div class="setup-title">SIGN IN</div>
+      <div class="setup-sub">EMB Prospect Tracker</div>
+    </div>
+    <div class="setup-body">
+      <div class="frow"><div class="ff"><label>Email</label><input id="login-email" type="email" placeholder="you@eugenebrokers.com" autocomplete="username" /></div></div>
+      <div class="frow"><div class="ff"><label>Password</label><input id="login-password" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" /></div></div>
+      <div id="login-error" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(234,67,53,.12);border:1px solid rgba(234,67,53,.4);border-radius:8px;color:#ff9b91;font-size:12px;font-weight:700"></div>
+    </div>
+    <div class="setup-footer">
+      <button class="btn-p" onclick="doLogin()" id="login-btn">SIGN IN →</button>
+    </div>
+  </div>
+</div>
+
 <!-- SETUP SCREEN (first run) -->
 <div class="setup-screen" id="setup-screen">
   <div class="setup-card">
@@ -1476,6 +1494,51 @@ async function verifyAdminPin() {
 }
 
 // ═══════════════════════════════════════════
+//  AUTH (login / logout)
+// ═══════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('login-email')?.value?.trim()
+  const password = document.getElementById('login-password')?.value
+  const errEl = document.getElementById('login-error')
+  const btn = document.getElementById('login-btn')
+  if (errEl) errEl.style.display = 'none'
+  if (!email || !password) {
+    if (errEl) { errEl.textContent = 'Email and password are required.'; errEl.style.display = 'block' }
+    return
+  }
+  if (!supabase) {
+    if (errEl) { errEl.textContent = 'Supabase not initialized. Check your connection.'; errEl.style.display = 'block' }
+    return
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'SIGNING IN…' }
+  try {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      if (errEl) { errEl.textContent = error.message || 'Invalid email or password.'; errEl.style.display = 'block' }
+      if (btn) { btn.disabled = false; btn.textContent = 'SIGN IN →' }
+      return
+    }
+    // Success — reload to re-run init() with an authenticated session.
+    window.location.reload()
+  } catch (e) {
+    console.error('Login error:', e)
+    if (errEl) { errEl.textContent = 'Login failed. Please try again.'; errEl.style.display = 'block' }
+    if (btn) { btn.disabled = false; btn.textContent = 'SIGN IN →' }
+  }
+}
+
+async function doLogout() {
+  if (!supabase) return
+  if (!confirm('Sign out? You will need to log in again next time.')) return
+  try {
+    await supabase.auth.signOut()
+  } catch (e) {
+    console.error('Logout error:', e)
+  }
+  window.location.reload()
+}
+
+// ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
 async function init() {
@@ -1489,10 +1552,27 @@ async function init() {
   try {
     // Load Supabase from local UMD bundle
     if (window.supabase && window.supabase.createClient) {
-      supabase = window.supabase.createClient(cfg.supabase_url, cfg.supabase_anon_key)
+      supabase = window.supabase.createClient(cfg.supabase_url, cfg.supabase_anon_key, {
+        auth: { persistSession: true, autoRefreshToken: true, storageKey: 'emb-auth' }
+      })
       console.log('Supabase initialized ✓')
     } else {
       console.error('Supabase UMD not loaded')
+    }
+
+    // Auth gate — require login before loading data
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        document.getElementById('loading').classList.add('hidden')
+        document.getElementById('login-screen').classList.add('show')
+        setTimeout(() => document.getElementById('login-email')?.focus(), 50)
+        return
+      }
+      // Rebind realtime on sign-out so a new user's session reconnects cleanly.
+      supabase.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_OUT') window.location.reload()
+      })
     }
 
     currentUser = {

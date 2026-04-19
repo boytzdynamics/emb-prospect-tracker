@@ -278,6 +278,9 @@ All settings stored as JSON on disk via Electron IPC. Never use localStorage for
 21. ✅ **Nav bar Windows overlap fix** — Added 140px right padding so Windows title bar controls (min/max/close) don't overlap admin button and version badge.
 22. ✅ **Admin PIN actually unlocks panel** — `renderAdminPanel()` now checks in-memory `adminModeActive` flag in addition to saved config role.
 23. ✅ **Dynamic team sidebar** — Bottom-left team label and LO icons are dynamic. Shows current user's team name + team members from Users list. Falls back to current user's initials for unconfigured teams.
+24. ✅ **Team renamed: Shad → Tari** — All dropdowns (setup wizard, admin profile, add-user, settings modal), `KNOWN_TEAMS`, and `TEAM_COLORS` updated. Purple (#8B5CF6) retained for Tari.
+25. ✅ **Cross-team reassignment** — Move Contact modal now has an optional team dropdown alongside the column dropdown. Updates `contacts.team`; does not touch follow-up clock or needs_response. Enables Tari ↔ Lauren (and Matt) transfers.
+26. ✅ **Kanban card density** — Card padding/margins/font sizes trimmed across the board so more cards fit per column without losing info. Card `max-height` 320→260, LO dot 26→22, card-name 13→12.5, fu-tag 10.5→10, card-note 11→10.5 with max-height 60→38, btn-sm 24→21 / 9.5→9, column gap 8→6.
 
 ---
 

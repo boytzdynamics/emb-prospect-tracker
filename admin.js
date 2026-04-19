@@ -17,7 +17,7 @@ function renderAdminPanel() {
       <!-- 0: Profile -->
       <div id="apanel-0" style="padding:20px">
         <div class="frow"><div class="ff"><label>Your Name</label><input id="a-name" value="${cfg.user_name||''}" /></div><div class="ff"><label>Initials</label><input id="a-initials" value="${cfg.user_initials||''}" maxlength="2" /></div></div>
-        <div class="frow"><div class="ff"><label>Role</label><select id="a-role"><option value="admin" ${cfg.user_role==='admin'?'selected':''}>Admin</option><option value="lo" ${cfg.user_role==='lo'?'selected':''}>Loan Officer</option></select></div><div class="ff"><label>Team</label><select id="a-team"><option value="matt" ${cfg.user_team==='matt'?'selected':''}>Team Matt</option><option value="shad" ${cfg.user_team==='shad'?'selected':''}>Team Shad</option><option value="lauren" ${cfg.user_team==='lauren'?'selected':''}>Team Lauren</option></select></div></div>
+        <div class="frow"><div class="ff"><label>Role</label><select id="a-role"><option value="admin" ${cfg.user_role==='admin'?'selected':''}>Admin</option><option value="lo" ${cfg.user_role==='lo'?'selected':''}>Loan Officer</option></select></div><div class="ff"><label>Team</label><select id="a-team"><option value="matt" ${cfg.user_team==='matt'?'selected':''}>Team Matt</option><option value="tari" ${cfg.user_team==='tari'?'selected':''}>Team Tari</option><option value="lauren" ${cfg.user_team==='lauren'?'selected':''}>Team Lauren</option></select></div></div>
         <button class="btn-p" onclick="saveAdminProfile()" style="margin-top:8px">Save Profile</button>
       </div>
 
@@ -28,7 +28,7 @@ function renderAdminPanel() {
         <div style="background:var(--off);border:1.5px solid #e0e4e6;border-radius:10px;padding:14px">
           <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Add New User</div>
           <div class="frow"><div class="ff"><label>Name</label><input id="nu-name" placeholder="Full name" /></div><div class="ff"><label>Email</label><input id="nu-email" placeholder="email@example.com" /></div></div>
-          <div class="frow"><div class="ff"><label>Role</label><select id="nu-role"><option value="admin">Admin</option><option value="lo" selected>Loan Officer</option></select></div><div class="ff"><label>Team</label><select id="nu-team"><option value="matt">Team Matt</option><option value="shad">Team Shad</option><option value="lauren">Team Lauren</option></select></div></div>
+          <div class="frow"><div class="ff"><label>Role</label><select id="nu-role"><option value="admin">Admin</option><option value="lo" selected>Loan Officer</option></select></div><div class="ff"><label>Team</label><select id="nu-team"><option value="matt">Team Matt</option><option value="tari">Team Tari</option><option value="lauren">Team Lauren</option></select></div></div>
           <div class="frow"><div class="ff"><label>Initials</label><input id="nu-initials" maxlength="2" placeholder="CS" /></div><div class="ff"><label>Color</label><input id="nu-color" type="color" value="#3F80AA" /></div></div>
           <button class="btn-p" onclick="addUser()" style="margin-top:4px">+ Add User</button>
         </div>
@@ -51,7 +51,7 @@ function renderAdminPanel() {
             <label>Team</label>
             <select id="a-board-team" onchange="loadBoardVisibilityAdmin()" style="border:1.5px solid #e0e4e6;border-radius:8px;padding:8px 11px;font-family:inherit;font-size:13px;font-weight:700;background:var(--off);outline:none">
               <option value="matt">Team Matt</option>
-              <option value="shad">Team Shad</option>
+              <option value="tari">Team Tari</option>
               <option value="lauren">Team Lauren</option>
             </select>
           </div>

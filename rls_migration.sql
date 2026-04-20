@@ -70,32 +70,58 @@ begin
   end if;
 end $$;
 
+-- ---- PART 1b: Additional tables found in Supabase ----
+-- audit_log, contact_history, deleted_records were not in the original
+-- spec but exist in the DB. Apply RLS + authenticated policy to them too.
+
+alter table public.audit_log enable row level security;
+drop policy if exists "authenticated_full_access" on public.audit_log;
+create policy "authenticated_full_access" on public.audit_log
+  for all to authenticated using (true) with check (true);
+
+alter table public.contact_history enable row level security;
+drop policy if exists "authenticated_full_access" on public.contact_history;
+create policy "authenticated_full_access" on public.contact_history
+  for all to authenticated using (true) with check (true);
+
+alter table public.deleted_records enable row level security;
+drop policy if exists "authenticated_full_access" on public.deleted_records;
+create policy "authenticated_full_access" on public.deleted_records
+  for all to authenticated using (true) with check (true);
+
+-- ---- PART 1c: Defensive sweep — catch any other public.* tables ----
+-- Enables RLS + authenticated_full_access on every public table that
+-- doesn't already have it. Safe to re-run.
+do $$
+declare
+  tbl record;
+begin
+  for tbl in
+    select tablename from pg_tables where schemaname = 'public'
+  loop
+    execute format('alter table public.%I enable row level security', tbl.tablename);
+    execute format('drop policy if exists "authenticated_full_access" on public.%I', tbl.tablename);
+    execute format('create policy "authenticated_full_access" on public.%I
+                    for all to authenticated using (true) with check (true)', tbl.tablename);
+  end loop;
+end $$;
+
 -- ---- PART 2: TRANSITIONAL anon policy ----
 -- Keeps old (pre-v2.1.0) clients working during the rollout window.
 -- DROP THESE once all LOs are on the new build (see PART 3).
 
-create policy "anon_transition" on public.contacts
-  for all to anon using (true) with check (true);
-create policy "anon_transition" on public.contact_log
-  for all to anon using (true) with check (true);
-create policy "anon_transition" on public.notes
-  for all to anon using (true) with check (true);
-create policy "anon_transition" on public.gmail_log
-  for all to anon using (true) with check (true);
-create policy "anon_transition" on public.sms_messages
-  for all to anon using (true) with check (true);
-create policy "anon_transition" on public.column_labels
-  for all to anon using (true) with check (true);
-create policy "anon_transition" on public.app_settings
-  for all to anon using (true) with check (true);
-
+-- Defensive sweep — drop any existing anon_transition, then add one to every public.* table.
 do $$
+declare
+  tbl record;
 begin
-  if exists (select 1 from information_schema.tables
-             where table_schema='public' and table_name='quick_notes') then
-    execute 'create policy "anon_transition" on public.quick_notes
-             for all to anon using (true) with check (true)';
-  end if;
+  for tbl in
+    select tablename from pg_tables where schemaname = 'public'
+  loop
+    execute format('drop policy if exists "anon_transition" on public.%I', tbl.tablename);
+    execute format('create policy "anon_transition" on public.%I
+                    for all to anon using (true) with check (true)', tbl.tablename);
+  end loop;
 end $$;
 
 -- ============================================================
@@ -104,12 +130,13 @@ end $$;
 --  Leave commented until you're ready.
 -- ============================================================
 
--- drop policy "anon_transition" on public.contacts;
--- drop policy "anon_transition" on public.contact_log;
--- drop policy "anon_transition" on public.notes;
--- drop policy "anon_transition" on public.gmail_log;
--- drop policy "anon_transition" on public.sms_messages;
--- drop policy "anon_transition" on public.column_labels;
--- drop policy "anon_transition" on public.app_settings;
--- -- and if quick_notes still exists:
--- -- drop policy "anon_transition" on public.quick_notes;
+-- do $$
+-- declare
+--   tbl record;
+-- begin
+--   for tbl in
+--     select tablename from pg_tables where schemaname = 'public'
+--   loop
+--     execute format('drop policy if exists "anon_transition" on public.%I', tbl.tablename);
+--   end loop;
+-- end $$;

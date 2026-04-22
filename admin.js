@@ -9,7 +9,7 @@ function renderAdminPanel() {
   showSimpleModal('⚙️ ADMIN SETTINGS', `
     <div style="padding:0">
       <div style="display:flex;border-bottom:1px solid #eaeef0;background:#f8f9fa;border-radius:8px 8px 0 0;overflow:hidden">
-        ${['Profile','Users','Columns','Boards','Integrations','Gmail','Import','Defaults'].map((tab,i) =>
+        ${['Profile','Users','Columns','Boards','Integrations','Gmail','Import','Defaults','Meta'].map((tab,i) =>
           `<button onclick="adminTab(${i})" id="atab-${i}" style="flex:1;padding:10px 4px;border:none;background:${i===0?'white':'transparent'};font-family:inherit;font-size:10px;font-weight:900;color:${i===0?'var(--dark)':'#aaa'};cursor:pointer;border-bottom:2px solid ${i===0?'var(--blue)':'transparent'};transition:all .2s">${tab}</button>`
         ).join('')}
       </div>
@@ -165,6 +165,47 @@ function renderAdminPanel() {
         </div>
         <button class="btn-p" onclick="saveDefaults()">Save Defaults</button>
       </div>
+
+      <!-- 8: Meta Leads -->
+      <div id="apanel-8" style="padding:20px;display:none">
+        <div style="background:#eef5fc;border:1.5px solid var(--blue);border-radius:9px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--dark);line-height:1.7">
+          <strong>📱 Meta Leads — Messenger / Instagram pipeline</strong><br>
+          These settings configure the Meta Leads board and ManyChat webhook integration.
+          Values are stored in Supabase <code>admin_settings</code> and used by the Edge Functions.
+        </div>
+
+        <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">WEBHOOK ENDPOINT</div>
+        <div style="background:var(--off);border:1.5px solid #e0e4e6;border-radius:9px;padding:12px;font-size:12px;color:var(--dark);margin-bottom:14px">
+          Paste this as the ManyChat External Request URL:<br>
+          <code id="meta-webhook-url" style="background:#e8f0fe;padding:2px 6px;border-radius:4px;font-size:11px">${cfg.supabase_url||'https://your-project.supabase.co'}/functions/v1/meta-webhook</code>
+          <button onclick="copyMetaWebhookUrl()" class="btn-sm btn-edit-sm" style="margin-left:8px">Copy</button>
+        </div>
+
+        <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">BMB FACEBOOK PAGE ID</div>
+        <div style="font-size:11px;color:#888;margin-bottom:8px">Used for "Open in Business Suite" deep links. Find at facebook.com/p/PageName-&lt;numeric-id&gt;.</div>
+        <div class="frow"><div class="ff"><input id="a-meta-bmb-page" placeholder="61561063514152" /></div></div>
+
+        <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">MANYCHAT WEBHOOK SECRET</div>
+        <div style="font-size:11px;color:#888;margin-bottom:8px">Shared secret the Edge Function compares against the <code>Authorization: Bearer</code> header from ManyChat. Rotate by regenerating, updating ManyChat flows, and setting the secret in Supabase Edge Function secrets.</div>
+        <div class="frow"><div class="ff"><input id="a-meta-webhook-secret" type="password" placeholder="(set)" /></div></div>
+
+        <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">CLASSIFICATION WINDOWS</div>
+        <div class="frow">
+          <div class="ff">
+            <label>Auto-response window (seconds)</label>
+            <input id="a-meta-auto-window" type="number" min="0" placeholder="120" />
+            <div style="font-size:10px;color:#aaa;margin-top:4px">Outbounds within this window of form submission are tagged automated.</div>
+          </div>
+          <div class="ff">
+            <label>Initial submission window (hours)</label>
+            <input id="a-meta-initial-window" type="number" min="0" placeholder="3" />
+            <div style="font-size:10px;color:#aaa;margin-top:4px">Inbounds past this window (with no manual reply) flip the card to Active.</div>
+          </div>
+        </div>
+
+        <button class="btn-p" onclick="saveMetaSettings()" style="margin-top:14px">Save Meta Settings</button>
+        <div id="meta-settings-status" style="margin-top:10px;font-size:11px;color:#888"></div>
+      </div>
     </div>
   `, 'modal-admin')
 
@@ -174,6 +215,7 @@ function renderAdminPanel() {
   loadAdminPinForPanel()
   loadUnitePhonesAdmin()
   loadGmailAccountsAdmin()
+  loadMetaSettingsAdmin()
 }
 
 // Gmail account row helper
@@ -272,13 +314,7 @@ async function saveGmailAccounts() {
   })
   try {
     const payload = { key: 'gmail_accounts', value: JSON.stringify(_adminGmailAccounts) }
-    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', 'gmail_accounts').maybeSingle()
-    let error
-    if (existing) {
-      ({ error } = await supabase.from('app_settings').update({ value: payload.value }).eq('key', 'gmail_accounts'))
-    } else {
-      ({ error } = await supabase.from('app_settings').insert(payload))
-    }
+    const { error } = await supabase.from('app_settings').upsert(payload, { onConflict: 'key' })
     if (error) { showToast('Failed to save: ' + error.message, 'red'); return }
     showToast('Gmail accounts saved — polling will restart', 'green')
     // Update dynamic accounts in gmail.js and restart poller
@@ -289,12 +325,70 @@ async function saveGmailAccounts() {
 }
 
 function adminTab(i) {
-  for(let j=0;j<8;j++){
+  for(let j=0;j<9;j++){
     const tab = document.getElementById('atab-'+j)
     const panel = document.getElementById('apanel-'+j)
     if(tab){tab.style.background=j===i?'white':'transparent';tab.style.color=j===i?'var(--dark)':'#aaa';tab.style.borderBottomColor=j===i?'var(--blue)':'transparent'}
     if(panel)panel.style.display=j===i?'block':'none'
   }
+}
+
+// ═══════════════════════════════════════════
+//  META SETTINGS (admin_settings table)
+// ═══════════════════════════════════════════
+async function loadMetaSettingsAdmin() {
+  if (!supabase) return
+  try {
+    const { data } = await supabase.from('admin_settings').select('key,value')
+    const map = {}
+    ;(data || []).forEach(r => { map[r.key] = r.value })
+    const pageEl = document.getElementById('a-meta-bmb-page')
+    const secretEl = document.getElementById('a-meta-webhook-secret')
+    const autoEl = document.getElementById('a-meta-auto-window')
+    const initEl = document.getElementById('a-meta-initial-window')
+    if (pageEl) pageEl.value = map.bmb_page_id && map.bmb_page_id !== 'REPLACE_WITH_ACTUAL_BMB_PAGE_ID' ? map.bmb_page_id : ''
+    if (secretEl) secretEl.value = map.manychat_webhook_secret && map.manychat_webhook_secret !== 'REPLACE_WITH_SECRET' ? map.manychat_webhook_secret : ''
+    if (autoEl) autoEl.value = map.auto_response_window_seconds || '120'
+    if (initEl) initEl.value = map.initial_submission_window_hours || '3'
+  } catch(e) {
+    console.error('Error loading meta settings:', e)
+    const s = document.getElementById('meta-settings-status')
+    if (s) { s.textContent = 'Could not load — check that admin_settings table exists.'; s.style.color = 'var(--red)' }
+  }
+}
+
+async function saveMetaSettings() {
+  if (!supabase) { showToast('Supabase not connected', 'red'); return }
+  const cfg = loadConfig()||{}
+  const pairs = [
+    { key: 'bmb_page_id',                     value: document.getElementById('a-meta-bmb-page')?.value?.trim() || '' },
+    { key: 'manychat_webhook_secret',         value: document.getElementById('a-meta-webhook-secret')?.value?.trim() || '' },
+    { key: 'auto_response_window_seconds',    value: document.getElementById('a-meta-auto-window')?.value?.trim() || '120' },
+    { key: 'initial_submission_window_hours', value: document.getElementById('a-meta-initial-window')?.value?.trim() || '3' },
+  ]
+  try {
+    for (const p of pairs) {
+      const { data: existing } = await supabase.from('admin_settings').select('id').eq('key', p.key).maybeSingle()
+      if (existing) {
+        await supabase.from('admin_settings').update({ value: p.value, updated_by: cfg.user_name||'', updated_at: new Date().toISOString() }).eq('key', p.key)
+      } else {
+        await supabase.from('admin_settings').insert({ key: p.key, value: p.value, updated_by: cfg.user_name||'' })
+      }
+    }
+    const s = document.getElementById('meta-settings-status')
+    if (s) { s.textContent = 'Saved. Note: changing the webhook secret also requires updating Supabase Edge Function secrets + ManyChat External Request header.'; s.style.color = 'var(--green)' }
+    showToast('Meta settings saved', 'green')
+  } catch(e) {
+    console.error('Error saving meta settings:', e)
+    showToast('Failed to save meta settings', 'red')
+  }
+}
+
+function copyMetaWebhookUrl() {
+  const cfg = loadConfig()||{}
+  const url = `${cfg.supabase_url||'https://your-project.supabase.co'}/functions/v1/meta-webhook`
+  navigator.clipboard?.writeText(url)
+  showToast('Webhook URL copied', 'blue')
 }
 
 async function testGmailConnections() {
@@ -429,12 +523,7 @@ async function saveIntegrations() {
     const phones = collectUnitePhones()
     try {
       const payload = { key: 'unite_phones', value: JSON.stringify(phones) }
-      const { data: existing } = await supabase.from('app_settings').select('id').eq('key', 'unite_phones').maybeSingle()
-      if (existing) {
-        await supabase.from('app_settings').update({ value: payload.value }).eq('key', 'unite_phones')
-      } else {
-        await supabase.from('app_settings').insert(payload)
-      }
+      await supabase.from('app_settings').upsert(payload, { onConflict: 'key' })
       unitePhones = phones
     } catch(e) { console.error('Error saving unite phones:', e) }
   }
@@ -537,6 +626,7 @@ async function importSettings(input) {
 const ALL_BOARDS = [
   { id: 'prospects', label: 'Prospects', icon: '🏠' },
   { id: 'leads', label: 'Leads', icon: '⚡' },
+  { id: 'meta', label: 'Meta Leads', icon: '📱' },
   { id: 'closed', label: 'Closed Loans', icon: '✅' },
   { id: 'dead', label: 'Dead Files', icon: '💀' }
 ]
@@ -547,7 +637,7 @@ async function loadBoardVisibilityAdmin() {
   if (!el) return
 
   // Default: all boards visible
-  let visible = ['prospects','leads','closed','dead']
+  let visible = ['prospects','leads','closed','dead','meta']
   if (supabase) {
     try {
       const { data } = await supabase.from('app_settings').select('value').eq('key', 'boards_visible_' + team).maybeSingle()
@@ -608,13 +698,7 @@ async function saveAdminPin() {
   if (!supabase) { showToast('Supabase not connected', 'red'); return }
   try {
     const payload = { key: 'admin_pin', value: pin }
-    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', 'admin_pin').maybeSingle()
-    let error
-    if (existing) {
-      ({ error } = await supabase.from('app_settings').update({ value: pin }).eq('key', 'admin_pin'))
-    } else {
-      ({ error } = await supabase.from('app_settings').insert(payload))
-    }
+    const { error } = await supabase.from('app_settings').upsert(payload, { onConflict: 'key' })
     if (error) { showToast('Failed to save PIN: ' + error.message, 'red'); return }
     showToast('Admin PIN saved', 'green')
     const status = document.getElementById('admin-pin-status')

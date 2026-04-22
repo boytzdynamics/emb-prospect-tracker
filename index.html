@@ -230,7 +230,21 @@ body.is-dragging .card:not(.is-dragging){transition:transform .15s ease;}
 .sb-num{margin-left:auto;min-width:20px;height:20px;border-radius:10px;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 2px 6px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.25) inset;}
 .sb-num.r{background:linear-gradient(135deg,#E4572E,#c43d1a);color:#fff;}
 .sb-num.b{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;}
+.sb-num.y{background:linear-gradient(135deg,#E4C93C,#C2A516);color:#2a2e30;}
 .sb-num.d{background:rgba(255,255,255,.1);color:rgba(255,255,255,.55);box-shadow:none;}
+
+/* Meta Leads board — inherits display:flex from .board.on */
+.meta-board{flex-direction:row;gap:0;padding:10px}
+.meta-bucket-cols .kcol{background:transparent;border:none;padding:6px 0}
+.meta-bucket-cols .kcards-scroll{overflow-y:auto;height:100%;padding:6px}
+.meta-card{transition:border-color .15s,transform .08s}
+.meta-card:hover{border-color:var(--blue)!important;transform:translateY(-1px)}
+.meta-card.needs-response{background:#FFFCE5!important;border-color:#E4C93C!important}
+.meta-card.organic-pulse{border-color:#E4572E!important;animation:organic-pulse 1.8s ease-in-out infinite}
+@keyframes organic-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(228,87,46,.5)}
+  50%    {box-shadow:0 0 0 6px rgba(228,87,46,0)}
+}
 
 .sb-lo{margin-top:auto;padding:12px 13px;border-top:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,transparent,rgba(0,0,0,.2));position:relative;z-index:1;}
 .sb-lo-lbl{font-size:9px;font-weight:900;color:rgba(255,255,255,.55);letter-spacing:2px;text-transform:uppercase;margin-bottom:7px;}
@@ -1152,6 +1166,45 @@ body.is-dragging .card:not(.is-dragging){transition:transform .15s ease;}
     </div>
   </div>
 
+  <!-- META LEADS BOARD -->
+  <div id="board-meta" class="board meta-board">
+    <!-- Cold bucket (left 3 columns under one header) -->
+    <div class="meta-bucket" data-bucket="cold" style="flex:3;display:flex;flex-direction:column;min-width:0">
+      <div class="meta-bucket-hdr" style="background:linear-gradient(135deg,#6B7A7D,#4a5558);color:white;padding:10px 14px;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:10px">
+        <div class="bh-icon" style="font-size:16px">❄️</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;font-weight:900">COLD</div>
+        <div id="meta-cold-count" style="margin-left:auto;background:rgba(255,255,255,.2);padding:2px 10px;border-radius:5px;font-size:11px;font-weight:900">0</div>
+      </div>
+      <div class="meta-bucket-cols" style="display:flex;flex:1;gap:6px;min-height:0">
+        <div class="kcol meta-col" data-column-id="col_cold_1" style="flex:1;min-width:0">
+          <div class="kcards-scroll" id="cards-cold-1"></div>
+        </div>
+        <div class="kcol meta-col" data-column-id="col_cold_2" style="flex:1;min-width:0">
+          <div class="kcards-scroll" id="cards-cold-2"></div>
+        </div>
+        <div class="kcol meta-col" data-column-id="col_cold_3" style="flex:1;min-width:0">
+          <div class="kcards-scroll" id="cards-cold-3"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Active bucket (right 2 columns under one header) -->
+    <div class="meta-bucket" data-bucket="active" style="flex:2;display:flex;flex-direction:column;min-width:0;margin-left:10px">
+      <div class="meta-bucket-hdr" style="background:linear-gradient(135deg,#61C08C,#4aab79);color:var(--dark);padding:10px 14px;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:10px">
+        <div class="bh-icon" style="font-size:16px">🔥</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;font-weight:900">ACTIVE</div>
+        <div id="meta-active-count" style="margin-left:auto;background:rgba(0,0,0,.15);padding:2px 10px;border-radius:5px;font-size:11px;font-weight:900">0</div>
+      </div>
+      <div class="meta-bucket-cols" style="display:flex;flex:1;gap:6px;min-height:0">
+        <div class="kcol meta-col" data-column-id="col_active_1" style="flex:1;min-width:0">
+          <div class="kcards-scroll" id="cards-active-1"></div>
+        </div>
+        <div class="kcol meta-col" data-column-id="col_active_2" style="flex:1;min-width:0">
+          <div class="kcards-scroll" id="cards-active-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- end .main -->
 </div><!-- end .body-row -->
 
@@ -1358,9 +1411,11 @@ let activeLoanType = 'purchase'
 let activeDest = 'prospects'
 let activeSources = []
 let fuMode = 'days'
-let visibleBoards = ['prospects','leads','closed','dead']  // per-team, loaded from Supabase
+let visibleBoards = ['prospects','leads','closed','dead','meta']  // per-team, loaded from Supabase
 let adminModeActive = false  // temporary admin elevation via PIN
 let unitePhones = []  // [{phone, initials, name}] — loaded from Supabase app_settings
+let metaLeads = []    // Meta Leads board rows from meta_leads table
+let metaMessagesByLead = {}  // meta_lead_id → array of meta_messages (loaded lazily when card opened)
 let activeOffice = '' // 'bmb' | 'emb' — required, no default
 let cfuMode = 'days'
 let isEditing = false
@@ -1466,7 +1521,7 @@ async function loadBoardVisibility(teamOverride) {
   if (!supabase || !currentUser?.team) return
   const team = teamOverride || ((currentUser?.role === 'admin' && currentTeamView === 'team' && viewingTeam) ? viewingTeam : currentUser.team)
   try {
-    visibleBoards = ['prospects','leads','closed','dead'] // Reset to default before loading
+    visibleBoards = ['prospects','leads','closed','dead','meta'] // Reset to default before loading
     const key = 'boards_visible_' + team
     const { data, error } = await supabase.from('app_settings').select('value').eq('key', key).maybeSingle()
     if (error) { console.error('Failed to load board visibility:', error); return }
@@ -1487,6 +1542,7 @@ function renderSidebar() {
   const boards = [
     { id: 'leads', navId: 'nav-leads', icon: '⚡', label: 'Leads', badgeId: 'badge-leads', badgeClass: 'b' },
     { id: 'prospects', navId: 'nav-prospects', icon: '🏠', label: 'Prospects', badgeId: 'badge-prospects', badgeClass: 'r' },
+    { id: 'meta', navId: 'nav-meta', icon: '📱', label: 'Meta Leads', badgeId: 'badge-meta', badgeClass: 'y' },
     { id: 'closed', navId: 'nav-closed', icon: '✅', label: 'Closed Loans' },
     { id: 'dead', navId: 'nav-dead', icon: '💀', label: 'Dead Files' }
   ]
@@ -1885,6 +1941,7 @@ async function loadContacts() {
       console.warn('Running in demo mode - Supabase unavailable')
     }
     renderAllBoards()
+    loadMetaLeads()  // fire-and-forget — populates the Meta Leads board
     setSyncStatus('ok', 'Synced ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}))
   } catch(e) {
     console.error('Load error:', e)
@@ -1908,6 +1965,15 @@ function setupRealtime() {
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => {
       loadContacts()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'meta_leads' }, () => {
+      loadMetaLeads()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'meta_messages' }, (payload) => {
+      // Refetch the messages for the affected lead if a detail modal is open
+      const leadId = payload?.new?.meta_lead_id || payload?.old?.meta_lead_id
+      if (leadId) loadMetaMessagesForLead(leadId)
+      loadMetaLeads()
     })
     .subscribe()
 }
@@ -1993,6 +2059,351 @@ function renderAllBoards() {
   const badgeL = document.getElementById('badge-leads')
   if (badgeP) badgeP.textContent = contacts.filter(c=>c.board==='prospects').length
   if (badgeL) badgeL.textContent = contacts.filter(c=>c.board==='leads').length
+
+  // Meta Leads board render (independent dataset)
+  renderMetaBoard()
+}
+
+// ═══════════════════════════════════════════
+//  META LEADS BOARD
+// ═══════════════════════════════════════════
+async function loadMetaLeads() {
+  if (!supabase) return
+  try {
+    const { data, error } = await supabase
+      .from('meta_leads')
+      .select('*')
+      .is('deleted_at', null)
+      .order('last_activity_at', { ascending: false })
+    if (error) { console.error('Load meta_leads error:', error); return }
+    metaLeads = data || []
+    renderMetaBoard()
+  } catch(e) { console.error('loadMetaLeads error:', e) }
+}
+
+function renderMetaBoard() {
+  // Split by bucket, then distribute row-first across the configured columns.
+  const cold   = metaLeads.filter(m => m.bucket === 'cold'  ).sort((a,b)=>new Date(b.last_activity_at)-new Date(a.last_activity_at))
+  const active = metaLeads.filter(m => m.bucket === 'active').sort((a,b)=>new Date(b.last_activity_at)-new Date(a.last_activity_at))
+
+  const coldCols   = ['cards-cold-1','cards-cold-2','cards-cold-3']
+  const activeCols = ['cards-active-1','cards-active-2']
+
+  // Clear all
+  ;[...coldCols, ...activeCols].forEach(id => {
+    const el = document.getElementById(id); if (el) el.innerHTML = ''
+  })
+
+  // Row-first fill: card[i] → column[i % numCols]
+  distributeRowFirst(cold,   coldCols)
+  distributeRowFirst(active, activeCols)
+
+  // Counts + nav badge
+  const coldCount   = document.getElementById('meta-cold-count')
+  const activeCount = document.getElementById('meta-active-count')
+  if (coldCount)   coldCount.textContent   = cold.length
+  if (activeCount) activeCount.textContent = active.length
+
+  const badgeMeta = document.getElementById('badge-meta')
+  if (badgeMeta) badgeMeta.textContent = metaLeads.filter(m => m.needs_response).length
+}
+
+function distributeRowFirst(cards, colElIds) {
+  if (cards.length === 0) {
+    // Empty state on first column
+    const first = document.getElementById(colElIds[0])
+    if (first) first.innerHTML = '<div class="col-empty" style="padding:14px;color:#aaa;font-size:12px;font-weight:700;text-align:center">No cards here yet</div>'
+    return
+  }
+  const numCols = colElIds.length
+  // Build HTML buckets per column
+  const buckets = colElIds.map(()=>[])
+  cards.forEach((m, i) => { buckets[i % numCols].push(renderMetaCard(m)) })
+  colElIds.forEach((id, i) => {
+    const el = document.getElementById(id); if (!el) return
+    el.innerHTML = buckets[i].length ? buckets[i].join('') : ''
+  })
+}
+
+function renderMetaCard(m) {
+  const name = escHtml(m.full_name || (m.ig_username ? '@'+m.ig_username : 'Unknown'))
+  const phone = m.phone ? formatPhoneDisplay(m.phone) : ''
+  const email = m.email ? escHtml(m.email) : ''
+  // Show @handle as a separate line only when we ALSO have a real name
+  const igHandle = (m.ig_username && m.full_name && !m.full_name.startsWith('@')) ? `@${escHtml(m.ig_username)}` : ''
+  const contactLine = [phone, email, igHandle].filter(Boolean).join(' · ')
+
+  // Source badge
+  const srcMap = {
+    form_only:       { label: '📋 Form',     bg: '#E8F0FE', fg: '#3F80AA' },
+    messenger_only:  { label: '💬 Message',  bg: '#E8F5E9', fg: '#4a7a5a' },
+    both:            { label: '✅ Form + Msg', bg: '#FFF7E0', fg: '#8a6a0f' },
+    organic:         { label: '🔥 Organic',  bg: '#FFECEC', fg: '#c43d1a' },
+    ad:              { label: '📣 Ad click', bg: '#F0E8FF', fg: '#6a4aa0' }
+  }
+  const src = srcMap[m.source_state] || srcMap.organic
+  const srcPill = `<span style="display:inline-block;background:${src.bg};color:${src.fg};padding:2px 8px;border-radius:5px;font-size:10px;font-weight:900;letter-spacing:.5px">${src.label}</span>`
+
+  // Last contact relative time
+  const lastAt = m.last_activity_at ? formatRelativeTime(m.last_activity_at) : '—'
+  const daysSince = m.last_activity_at ? Math.floor((Date.now() - new Date(m.last_activity_at).getTime()) / 86400000) : 0
+  const staleColor = daysSince >= 14 ? '#bbb' : '#777'
+
+  // Visual state: yellow = needs_response (always); red pulse = organic + needs_response
+  // (stackable — organic needs_response shows both the yellow background AND the red pulse border)
+  const isOrganicPulse = m.source_state === 'organic' && m.needs_response
+  const isYellow = m.needs_response
+  const classes = ['meta-card']
+  if (isYellow) classes.push('needs-response')
+  if (isOrganicPulse) classes.push('organic-pulse')
+  const cardClass = classes.join(' ')
+
+  const badge = isOrganicPulse
+    ? `<div style="background:#E4572E;color:white;padding:3px 8px;border-radius:5px;font-size:9px;font-weight:900;letter-spacing:1px;margin-top:6px;display:inline-block">🔥 HOT — ORGANIC DM</div>`
+    : isYellow
+      ? `<div style="background:#E4C93C;color:#2a2e30;padding:3px 8px;border-radius:5px;font-size:9px;font-weight:900;letter-spacing:1px;margin-top:6px;display:inline-block">↩ RESPONDED — REPLY NOW</div>`
+      : ''
+
+  return `<div class="${cardClass}" onclick="openMetaCard('${m.id}')" style="background:white;border:1.5px solid #eaeef0;border-radius:9px;padding:10px 11px;margin-bottom:6px;cursor:pointer;transition:border-color .15s">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:6px">
+      ${srcPill}
+      <div style="font-size:9.5px;color:${staleColor};font-weight:700">${lastAt}</div>
+    </div>
+    <div style="font-size:13px;font-weight:900;color:var(--dark);margin-bottom:3px">${name}</div>
+    ${contactLine ? `<div style="font-size:10.5px;color:#666;font-weight:700">${contactLine}</div>` : ''}
+    ${badge}
+  </div>`
+}
+
+function formatPhoneDisplay(raw) {
+  const d = (raw||'').replace(/\D/g,'')
+  if (d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`
+  return raw
+}
+
+function openMetaCard(id) {
+  const m = metaLeads.find(x => x.id === id)
+  if (!m) return
+  openMetaDetailModal(m)
+}
+
+// ═══════════════════════════════════════════
+//  META LEADS — DETAIL MODAL
+// ═══════════════════════════════════════════
+let _currentMetaLead = null
+
+async function openMetaDetailModal(m) {
+  _currentMetaLead = m
+  await loadMetaMessagesForLead(m.id)
+  renderMetaDetailModal(m)
+}
+
+async function loadMetaMessagesForLead(leadId) {
+  if (!supabase || !leadId) return
+  try {
+    const { data } = await supabase
+      .from('meta_messages')
+      .select('*')
+      .eq('meta_lead_id', leadId)
+      .order('sent_at', { ascending: true })
+    metaMessagesByLead[leadId] = data || []
+    // If the detail modal is currently open for this lead, re-render
+    if (_currentMetaLead?.id === leadId && document.getElementById('modal-meta-detail')?.classList.contains('open')) {
+      renderMetaDetailModal(_currentMetaLead)
+    }
+  } catch(e) { console.error('loadMetaMessagesForLead error:', e) }
+}
+
+function renderMetaDetailModal(m) {
+  const msgs = metaMessagesByLead[m.id] || []
+
+  const srcMap = {
+    form_only:      '📋 Form',
+    messenger_only: '💬 Message',
+    both:           '✅ Form + Msg',
+    organic:        '🔥 Organic',
+    ad:             '📣 Ad click'
+  }
+  const srcLabel = srcMap[m.source_state] || m.source_state
+
+  // Lead form answers (kept — useful context)
+  let formBlock = ''
+  if (m.lead_form_responses && Object.keys(m.lead_form_responses).length > 0) {
+    const rows = Object.entries(m.lead_form_responses).map(([k,v]) =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:12px">
+        <span style="color:#888;font-weight:700;text-transform:capitalize">${escHtml(k.replace(/_/g,' '))}</span>
+        <span style="color:var(--dark);font-weight:900">${escHtml(typeof v === 'object' ? JSON.stringify(v) : String(v))}</span>
+      </div>`).join('')
+    formBlock = `<div style="background:var(--off);border-radius:10px;padding:12px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Lead Form Answers</div>
+      ${rows}
+    </div>`
+  }
+
+  // Show last 2 inbound messages for context only (no bubbles, no compose)
+  const recentInbound = msgs
+    .filter(mm => mm.direction === 'inbound' && mm.body)
+    .slice(-2)
+    .reverse()
+  const recentBlock = recentInbound.length === 0
+    ? ''
+    : `<div style="margin-bottom:14px">
+         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Latest from them</div>
+         ${recentInbound.map(mm => `
+           <div style="background:#eaf4ff;border-radius:8px;padding:9px 11px;margin-bottom:6px">
+             <div style="font-size:9px;font-weight:900;color:#888;letter-spacing:.8px;margin-bottom:3px">${escHtml(mm.platform||'')} · ${formatRelativeTime(mm.sent_at)}</div>
+             <div style="font-size:12.5px;color:var(--dark);white-space:pre-wrap">${escHtml(mm.body)}</div>
+           </div>`).join('')}
+       </div>`
+
+  // External reply escape hatch
+  const bsSuiteUrl = m.platform === 'messenger'
+    ? `https://business.facebook.com/latest/inbox/all?selected_thread_id=${encodeURIComponent(m.meta_psid_bmb||'')}`
+    : (m.ig_thread_id
+        ? `https://www.instagram.com/direct/t/${encodeURIComponent(m.ig_thread_id)}`
+        : 'https://business.facebook.com/latest/inbox/all')
+  const bsSuiteLabel = m.platform === 'messenger' ? '↗ Open in Business Suite' : '↗ Open in Instagram'
+
+  const markRepliedBtn = m.needs_response
+    ? `<button class="btn-s" onclick="markMetaReplied('${m.id}')">✓ Mark Replied (clear yellow)</button>`
+    : ''
+
+  const body = `
+    <div style="padding:18px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px">
+        <div>
+          <div style="font-size:20px;font-weight:900;color:var(--dark);margin-bottom:2px">${escHtml(m.full_name||'Unknown')}</div>
+          <div style="font-size:12px;color:#666;font-weight:700">${[m.phone ? escHtml(formatPhoneDisplay(m.phone)) : '', m.email ? escHtml(m.email) : '', (m.ig_username && m.full_name && !m.full_name.startsWith('@')) ? '@'+escHtml(m.ig_username) : ''].filter(Boolean).join(' · ')}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <span style="background:#f4f6f7;color:var(--dark);padding:3px 9px;border-radius:5px;font-size:10.5px;font-weight:900">${srcLabel}</span>
+          <span style="background:${m.bucket==='active'?'#e8f5e9':'#f0f4f5'};color:${m.bucket==='active'?'#4a7a5a':'#777'};padding:3px 9px;border-radius:5px;font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase">${m.bucket}</span>
+        </div>
+      </div>
+
+      ${formBlock}
+      ${recentBlock}
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="btn-s" onclick="openExternalUrl('${bsSuiteUrl}')">${bsSuiteLabel}</button>
+        ${markRepliedBtn}
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid #eef1f3">
+        <button class="btn-p" onclick="promoteMetaLead('${m.id}')">→ Promote to Prospects</button>
+        <button class="btn-d" onclick="markMetaDead('${m.id}')">💀 Mark Dead</button>
+        <button class="btn-s" style="margin-left:auto" onclick="deleteMetaLead('${m.id}')">Delete Lead</button>
+      </div>
+    </div>
+  `
+  showSimpleModal('📱 META LEAD', body, 'modal-meta-detail')
+}
+
+async function markMetaReplied(leadId) {
+  if (!supabase) return
+  try {
+    await supabase.from('meta_leads')
+      .update({ needs_response: false, last_activity_at: new Date().toISOString() })
+      .eq('id', leadId)
+    closeModal('modal-meta-detail')
+    await loadMetaLeads()
+    showToast('Marked as replied', 'green')
+  } catch(e) { console.error(e); showToast('Could not update', 'red') }
+}
+
+async function markMetaDead(leadId) {
+  if (!supabase) return
+  const m = metaLeads.find(x => x.id === leadId)
+  if (!m) return
+  if (!confirm(`Mark "${m.full_name||'this lead'}" as dead?`)) return
+  try {
+    // Soft-delete via deleted_at — card disappears from board. Keeps row for history.
+    await supabase.from('meta_leads')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', leadId)
+    closeModal('modal-meta-detail')
+    await loadMetaLeads()
+    showToast('Lead marked dead', 'blue')
+  } catch(e) { console.error(e); showToast('Could not mark dead', 'red') }
+}
+
+async function promoteMetaLead(leadId) {
+  const m = metaLeads.find(x => x.id === leadId)
+  if (!m) return
+  if (!confirm(`Promote "${m.full_name || 'this lead'}" to the Prospects board? History stays linked.`)) return
+  if (!supabase) { showToast('Supabase not connected', 'red'); return }
+
+  // Parse first/last name from full_name
+  const parts = (m.full_name||'').trim().split(/\s+/)
+  const firstName = parts[0] || 'Meta'
+  const lastName = parts.slice(1).join(' ') || 'Lead'
+
+  // Map lead_form_responses fields to contact fields where obvious
+  const resp = m.lead_form_responses || {}
+  const contact = {
+    first_name: firstName,
+    last_name:  lastName,
+    phone:      m.phone || '',
+    email:      m.email || '',
+    office:     'bmb',  // BMB only in v1
+    board:      'prospects',
+    column_id:  'col_meta',
+    loan_type:  (resp.loan_type || resp.intent || 'purchase').toString().toLowerCase().includes('refi') ? 'refi' : 'purchase',
+    source:     m.source_state === 'ad' ? 'Meta Lead' : 'Meta Lead',
+    team:       (loadConfig()||{}).user_team || 'matt',
+    created_by_name: (loadConfig()||{}).user_name || 'Matt',
+    meta_psid_bmb:   m.meta_psid_bmb || null,
+    ig_user_id_bmb:  m.ig_user_id_bmb || null,
+    meta_lead_id:    m.id,
+    followup_date:   addBizDays(new Date(), 2).toISOString().split('T')[0],
+    followup_mode:   'auto'
+  }
+  if (resp.credit_score) contact.credit_score = String(resp.credit_score)
+  if (resp.est_price || resp.price)  contact.est_price    = String(resp.est_price || resp.price)
+
+  try {
+    const { data: inserted, error: insertErr } = await supabase.from('contacts').insert(contact).select('id').single()
+    if (insertErr) { showToast('Promotion failed: ' + insertErr.message, 'red'); return }
+
+    // Back-link meta_leads → contact
+    await supabase.from('meta_leads')
+      .update({ promoted_to_contact_id: inserted.id, deleted_at: new Date().toISOString() })
+      .eq('id', m.id)
+
+    // Migrate meta_messages from meta_lead_id → contact_id
+    await supabase.from('meta_messages')
+      .update({ contact_id: inserted.id, meta_lead_id: null })
+      .eq('meta_lead_id', m.id)
+
+    closeModal('modal-meta-detail')
+    showToast('Promoted to Prospects', 'green')
+    await loadMetaLeads()
+    await loadContacts()
+  } catch(e) {
+    console.error('promoteMetaLead error:', e)
+    showToast('Promotion failed', 'red')
+  }
+}
+
+async function deleteMetaLead(leadId) {
+  const m = metaLeads.find(x => x.id === leadId)
+  if (!m) return
+  if (!confirm(`Delete "${m.full_name || 'this lead'}"? This is a soft-delete — can be restored manually.`)) return
+  if (!supabase) return
+  try {
+    await supabase.from('meta_leads').update({ deleted_at: new Date().toISOString() }).eq('id', leadId)
+    closeModal('modal-meta-detail')
+    await loadMetaLeads()
+    showToast('Lead deleted', 'blue')
+  } catch(e) { console.error(e); showToast('Delete failed', 'red') }
+}
+
+function openExternalUrl(url) {
+  if (window.electronAPI?.openExternal) {
+    window.electronAPI.openExternal(url)
+  } else {
+    window.open(url, '_blank')
+  }
 }
 
 function renderCard(c, isInProcess) {
@@ -3325,12 +3736,13 @@ const BOARD_META = {
   prospects:{ icon:'🏠', label:'PROSPECTS' },
   leads:{ icon:'⚡', label:'LEADS' },
   closed:{ icon:'✅', label:'CLOSED LOANS' },
-  dead:{ icon:'💀', label:'DEAD FILES' }
+  dead:{ icon:'💀', label:'DEAD FILES' },
+  meta:{ icon:'📱', label:'META LEADS' }
 }
 
 function goBoard(b, el) {
   currentBoard = b
-  ;['prospects','leads','closed','dead'].forEach(id => {
+  ;['prospects','leads','closed','dead','meta'].forEach(id => {
     const bd = document.getElementById('board-'+id)
     if (bd) { bd.classList.remove('on'); bd.style.display = 'none' }
   })

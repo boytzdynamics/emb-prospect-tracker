@@ -4,3 +4,5 @@ dist/
 *.zip
 *.dmg
 *.blockmap
+.meta_webhook_secret.local
+supabase/.temp/

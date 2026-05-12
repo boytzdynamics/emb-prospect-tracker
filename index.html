@@ -394,6 +394,59 @@ body.is-dragging .card:not(.is-dragging){transition:transform .15s ease;}
 .kcards-scroll::-webkit-scrollbar{width:3px;}.kcards-scroll::-webkit-scrollbar-thumb{background:var(--teal);border-radius:2px;}
 .col-empty{text-align:center;color:#777;font-size:11px;font-weight:700;padding:20px 10px;}
 
+/* ── FOLLOW-UPS PAGE ── */
+.fu-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#fff;border-bottom:1px solid #dde2e4;flex-shrink:0;}
+.fu-toolbar-lbl{font-size:9px;font-weight:900;color:#777;letter-spacing:1.5px;text-transform:uppercase;}
+.fu-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:18px;background:#f0f3f5;color:#555;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid transparent;user-select:none;transition:all .15s;}
+.fu-chip:hover{background:#e6ebee;}
+.fu-chip.on{background:rgba(63,128,170,.15);border-color:var(--blue);color:var(--blue);}
+.fu-chip .chk{width:13px;height:13px;border-radius:3px;border:1.5px solid #b0b7bb;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#fff;line-height:1;}
+.fu-chip.on .chk{background:var(--blue);border-color:var(--blue);}
+.fu-chip.on .chk::after{content:'✓';}
+.fu-scope{display:inline-flex;background:#f0f3f5;border-radius:18px;padding:2px;gap:2px;margin-left:auto;}
+.fu-scope-btn{padding:4px 11px;border-radius:16px;border:none;background:transparent;color:#666;font-family:inherit;font-size:10px;font-weight:900;cursor:pointer;letter-spacing:.5px;}
+.fu-scope-btn.on{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;box-shadow:0 1px 4px rgba(63,128,170,.3);}
+.fu-count{font-size:10px;color:#888;font-weight:700;margin-left:6px;}
+
+.fu-body{flex:1;overflow-y:auto;padding:0;}
+.fu-body::-webkit-scrollbar{width:6px;}.fu-body::-webkit-scrollbar-thumb{background:var(--teal);border-radius:3px;}
+
+.fu-row{display:grid;grid-template-columns:14px 1fr 220px 110px 140px auto;align-items:center;gap:12px;padding:10px 14px;background:#fff;border-bottom:1px solid #eef1f3;cursor:pointer;transition:background .15s;position:relative;}
+.fu-row:hover{background:#f6f9fb;}
+.fu-row.overdue{background:#fdf5f5;}
+.fu-row.overdue:hover{background:#fbeaea;}
+.fu-row.duetoday{background:#fffaf2;}
+.fu-row.duetoday:hover{background:#fff2e0;}
+.fu-dot{width:10px;height:10px;border-radius:50%;background:#b0b7bb;}
+.fu-row.overdue .fu-dot{background:var(--red);box-shadow:0 0 0 3px rgba(224,82,82,.15);}
+.fu-row.duetoday .fu-dot{background:var(--orange);box-shadow:0 0 0 3px rgba(224,122,63,.15);}
+.fu-name{font-size:13px;font-weight:900;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fu-name .lo-tag{display:inline-block;margin-left:7px;font-size:9px;font-weight:700;color:#888;letter-spacing:.5px;}
+.fu-meta{font-size:11px;color:#555;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fu-meta .b-badge{display:inline-block;padding:1px 7px;border-radius:10px;background:rgba(63,128,170,.12);color:var(--blue);font-size:9px;font-weight:900;letter-spacing:.5px;margin-right:5px;text-transform:uppercase;}
+.fu-meta .b-badge.b-dead{background:rgba(136,136,136,.15);color:#666;}
+.fu-meta .b-badge.b-closed{background:rgba(97,192,140,.15);color:#3e9966;}
+.fu-last{font-size:11px;color:#777;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fu-due{font-size:11px;font-weight:900;color:#888;}
+.fu-row.overdue .fu-due{color:var(--red);}
+.fu-row.duetoday .fu-due{color:var(--orange);}
+.fu-actions{display:flex;gap:5px;align-items:center;}
+.fu-btn{background:#f0f3f5;border:1px solid #dde2e4;color:#555;border-radius:6px;padding:5px 9px;font-size:13px;cursor:pointer;line-height:1;transition:all .15s;font-family:inherit;}
+.fu-btn:hover{background:var(--blue);color:#fff;border-color:var(--blue);transform:translateY(-1px);}
+.fu-btn.fu-snooze:hover{background:#9c7ed6;border-color:#9c7ed6;}
+.fu-snooze-wrap{position:relative;}
+.fu-snooze-menu{position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid #dde2e4;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);padding:5px;display:none;z-index:50;min-width:140px;}
+.fu-snooze-menu.open{display:flex;flex-direction:column;}
+.fu-snooze-menu button{background:transparent;border:none;text-align:left;padding:6px 10px;font-family:inherit;font-size:11px;font-weight:700;color:#444;border-radius:5px;cursor:pointer;}
+.fu-snooze-menu button:hover{background:rgba(63,128,170,.12);color:var(--blue);}
+.fu-note-row{grid-column:1 / -1;display:none;padding:8px 6px 2px 26px;}
+.fu-note-row.open{display:flex;gap:6px;}
+.fu-note-row input{flex:1;padding:6px 10px;border:1.5px solid #dde2e4;border-radius:6px;font-family:inherit;font-size:12px;outline:none;}
+.fu-note-row input:focus{border-color:var(--blue);}
+.fu-note-row .fu-btn{padding:5px 12px;font-size:11px;font-weight:900;}
+.fu-empty{text-align:center;color:#888;font-size:13px;font-weight:700;padding:60px 20px;}
+.fu-empty .em-em{font-size:36px;margin-bottom:10px;display:block;}
+
 /* ── CARD ── */
 .card{
   background:color-mix(in srgb, var(--card-status, #448694) 35%, white);
@@ -1001,7 +1054,8 @@ body.is-dragging .card:not(.is-dragging){transition:transform .15s ease;}
 
   <div id="sb-my-nav">
     <div class="sb-sec">BOARDS</div>
-    <div class="sb-item on" data-board="leads" onclick="goBoard('leads',this)" id="nav-leads"><span class="si">⚡</span><span class="sl">Leads</span><span class="sb-num b" id="badge-leads">0</span></div>
+    <div class="sb-item on" data-board="followups" onclick="goBoard('followups',this)" id="nav-followups"><span class="si">📋</span><span class="sl">Follow-ups</span><span class="sb-num r" id="badge-followups" style="display:none">0</span></div>
+    <div class="sb-item" data-board="leads" onclick="goBoard('leads',this)" id="nav-leads"><span class="si">⚡</span><span class="sl">Leads</span><span class="sb-num b" id="badge-leads">0</span></div>
     <div class="sb-item" data-board="prospects" onclick="goBoard('prospects',this)" id="nav-prospects"><span class="si">🏠</span><span class="sl">Prospects</span><span class="sb-num r" id="badge-prospects">0</span></div>
     <div class="sb-item" data-board="closed" onclick="goBoard('closed',this)" id="nav-closed"><span class="si">✅</span><span class="sl">Closed Loans</span></div>
     <div class="sb-item" data-board="dead" onclick="goBoard('dead',this)" id="nav-dead"><span class="si">💀</span><span class="sl">Dead Files</span></div>
@@ -1030,7 +1084,7 @@ body.is-dragging .card:not(.is-dragging){transition:transform .15s ease;}
 <!-- MAIN -->
 <div class="main">
   <div class="board-hdr">
-    <div class="bh-title" id="bh-title"><div class="bh-icon">🏠</div>PROSPECTS</div>
+    <div class="bh-title" id="bh-title"><div class="bh-icon">📋</div>FOLLOW-UPS</div>
     <span class="team-pill" id="team-pill" style="display:none">Team</span>
     <div class="bh-right">
       <button class="btn-refresh" onclick="refreshData()" title="Last synced: just now">↻ Sync</button>
@@ -1038,8 +1092,27 @@ body.is-dragging .card:not(.is-dragging){transition:transform .15s ease;}
     </div>
   </div>
 
+  <!-- FOLLOW-UPS PAGE -->
+  <div id="board-followups" class="board-list on">
+    <div class="fu-toolbar">
+      <span class="fu-toolbar-lbl">Boards:</span>
+      <span class="fu-chip on" data-fu-board="leads" onclick="toggleFollowupBoard('leads')"><span class="chk"></span> ⚡ Leads</span>
+      <span class="fu-chip on" data-fu-board="prospects" onclick="toggleFollowupBoard('prospects')"><span class="chk"></span> 🏠 Prospects</span>
+      <span class="fu-chip" data-fu-board="dead" onclick="toggleFollowupBoard('dead')"><span class="chk"></span> 💀 Dead</span>
+      <span class="fu-chip" data-fu-board="closed" onclick="toggleFollowupBoard('closed')"><span class="chk"></span> ✅ Closed</span>
+      <div class="fu-scope" id="fu-scope">
+        <button class="fu-scope-btn on" data-fu-scope="due" onclick="setFollowupScope('due')">Due now &amp; overdue</button>
+        <button class="fu-scope-btn" data-fu-scope="all" onclick="setFollowupScope('all')">All upcoming</button>
+      </div>
+      <span class="fu-count" id="fu-count"></span>
+    </div>
+    <div class="fu-body" id="fu-body">
+      <div class="fu-empty"><span class="em-em">🎉</span>Nothing to follow up on right now.</div>
+    </div>
+  </div>
+
   <!-- PROSPECTS BOARD -->
-  <div id="board-prospects" class="board on">
+  <div id="board-prospects" class="board">
     <!-- FAAS Team (far left — labeled) -->
     <div class="kcol" id="col-faas" data-column-id="col_faas">
       <div class="khead" style="--ac:#6B7A7D">
@@ -1398,7 +1471,7 @@ body.is-dragging .card:not(.is-dragging){transition:transform .15s ease;}
 // ═══════════════════════════════════════════
 let supabase = null
 let currentUser = null
-let currentBoard = 'leads'
+let currentBoard = 'followups'
 let currentTeamView = 'my'
 let viewingTeam = null // Set dynamically after currentUser loads
 const KNOWN_TEAMS = ['matt', 'tari', 'lauren']
@@ -1411,7 +1484,7 @@ let activeLoanType = 'purchase'
 let activeDest = 'prospects'
 let activeSources = []
 let fuMode = 'days'
-let visibleBoards = ['prospects','leads','closed','dead','meta']  // per-team, loaded from Supabase
+let visibleBoards = ['followups','prospects','leads','closed','dead','meta']  // per-team, loaded from Supabase ('followups' always visible — see loadBoardVisibility)
 let adminModeActive = false  // temporary admin elevation via PIN
 let unitePhones = []  // [{phone, initials, name}] — loaded from Supabase app_settings
 let metaLeads = []    // Meta Leads board rows from meta_leads table
@@ -1521,7 +1594,7 @@ async function loadBoardVisibility(teamOverride) {
   if (!supabase || !currentUser?.team) return
   const team = teamOverride || ((currentUser?.role === 'admin' && currentTeamView === 'team' && viewingTeam) ? viewingTeam : currentUser.team)
   try {
-    visibleBoards = ['prospects','leads','closed','dead','meta'] // Reset to default before loading
+    visibleBoards = ['followups','prospects','leads','closed','dead','meta'] // Reset to default before loading; 'followups' is always present
     const key = 'boards_visible_' + team
     const { data, error } = await supabase.from('app_settings').select('value').eq('key', key).maybeSingle()
     if (error) { console.error('Failed to load board visibility:', error); return }
@@ -1530,6 +1603,7 @@ async function loadBoardVisibility(teamOverride) {
         const parsed = JSON.parse(data.value)
         if (Array.isArray(parsed) && parsed.length > 0) {
           visibleBoards = parsed
+          if (!visibleBoards.includes('followups')) visibleBoards.unshift('followups')
           console.log('Board visibility loaded for team', team, ':', visibleBoards)
         }
       } catch(e) { console.error('Invalid board visibility JSON:', e) }
@@ -1540,6 +1614,7 @@ async function loadBoardVisibility(teamOverride) {
 
 function renderSidebar() {
   const boards = [
+    { id: 'followups', navId: 'nav-followups', icon: '📋', label: 'Follow-ups', badgeId: 'badge-followups', badgeClass: 'r' },
     { id: 'leads', navId: 'nav-leads', icon: '⚡', label: 'Leads', badgeId: 'badge-leads', badgeClass: 'b' },
     { id: 'prospects', navId: 'nav-prospects', icon: '🏠', label: 'Prospects', badgeId: 'badge-prospects', badgeClass: 'r' },
     { id: 'meta', navId: 'nav-meta', icon: '📱', label: 'Meta Leads', badgeId: 'badge-meta', badgeClass: 'y' },
@@ -1744,8 +1819,9 @@ async function init() {
     // Show app immediately — don't wait for data
     document.getElementById('loading').classList.add('hidden')
 
-    // Set initial board to first visible board
-    const defaultBoard = isBoardVisible('leads') ? 'leads' : visibleBoards[0] || 'leads'
+    // Set initial board — Follow-ups by default, fall back to first visible
+    const defaultBoard = isBoardVisible('followups') ? 'followups'
+      : (isBoardVisible('leads') ? 'leads' : (visibleBoards[0] || 'leads'))
     goBoard(defaultBoard, document.getElementById('nav-' + defaultBoard))
 
     // Load data in background
@@ -2062,7 +2138,211 @@ function renderAllBoards() {
 
   // Meta Leads board render (independent dataset)
   renderMetaBoard()
+
+  // Follow-ups page render (chronological list across boards)
+  renderFollowupsBoard()
 }
+
+// ═══════════════════════════════════════════
+//  FOLLOW-UPS PAGE
+// ═══════════════════════════════════════════
+const FU_FILTER_KEY = 'emb_followup_filters'
+let followupFilters = loadFollowupFilters()
+
+function loadFollowupFilters() {
+  try {
+    const raw = localStorage.getItem(FU_FILTER_KEY)
+    if (raw) {
+      const p = JSON.parse(raw)
+      return {
+        boards: Array.isArray(p.boards) ? p.boards : ['leads','prospects'],
+        scope: p.scope === 'all' ? 'all' : 'due'
+      }
+    }
+  } catch(e) {}
+  return { boards: ['leads','prospects'], scope: 'due' }
+}
+
+function saveFollowupFilters() {
+  try { localStorage.setItem(FU_FILTER_KEY, JSON.stringify(followupFilters)) } catch(e) {}
+}
+
+function toggleFollowupBoard(boardId) {
+  const i = followupFilters.boards.indexOf(boardId)
+  if (i === -1) followupFilters.boards.push(boardId)
+  else followupFilters.boards.splice(i, 1)
+  saveFollowupFilters()
+  renderFollowupsBoard()
+}
+
+function setFollowupScope(scope) {
+  followupFilters.scope = (scope === 'all') ? 'all' : 'due'
+  saveFollowupFilters()
+  renderFollowupsBoard()
+}
+
+function fuRelativeDueLabel(diffDays) {
+  if (diffDays < 0) {
+    const n = Math.abs(diffDays)
+    return n + ' day' + (n!==1?'s':'') + ' overdue'
+  }
+  if (diffDays === 0) return 'Due today'
+  return 'Due in ' + diffDays + ' day' + (diffDays!==1?'s':'')
+}
+
+function fuLastContactLabel(c) {
+  const logs = (c.contact_log || []).filter(l => l && l.timestamp)
+  if (!logs.length) return '<span style="color:#aaa">No contact yet</span>'
+  const newest = logs.reduce((a,b) => new Date(a.timestamp) > new Date(b.timestamp) ? a : b)
+  return logTypeIcon(newest.log_type) + ' ' + escHtml(formatRelativeTime(newest.timestamp))
+}
+
+function fuBoardBadge(boardId) {
+  const map = {
+    leads: { cls:'', label:'Leads' },
+    prospects: { cls:'', label:'Prospects' },
+    dead: { cls:'b-dead', label:'Dead' },
+    closed: { cls:'b-closed', label:'Closed' }
+  }
+  const m = map[boardId] || { cls:'', label: boardId || '' }
+  return `<span class="b-badge ${m.cls}">${m.label}</span>`
+}
+
+function renderFollowupsBoard() {
+  const body = document.getElementById('fu-body')
+  if (!body) return
+
+  // Sync filter chip UI to state
+  document.querySelectorAll('.fu-chip[data-fu-board]').forEach(el => {
+    el.classList.toggle('on', followupFilters.boards.includes(el.dataset.fuBoard))
+  })
+  document.querySelectorAll('.fu-scope-btn').forEach(el => {
+    el.classList.toggle('on', el.dataset.fuScope === followupFilters.scope)
+  })
+
+  const today = new Date(); today.setHours(0,0,0,0)
+  const todayStr = today.toISOString().split('T')[0]
+
+  // Build the list
+  const rows = (contacts || [])
+    .filter(c => c && c.followup_date && followupFilters.boards.includes(c.board))
+    .filter(c => followupFilters.scope === 'all' ? true : (c.followup_date <= todayStr))
+    .sort((a,b) => (a.followup_date < b.followup_date ? -1 : a.followup_date > b.followup_date ? 1 : 0))
+
+  // Sidebar overdue badge (always counts strictly-overdue across active filters)
+  const overdueCount = (contacts || []).filter(c =>
+    c && c.followup_date && followupFilters.boards.includes(c.board) && c.followup_date < todayStr
+  ).length
+  const badge = document.getElementById('badge-followups')
+  if (badge) {
+    badge.textContent = overdueCount
+    badge.style.display = overdueCount > 0 ? '' : 'none'
+  }
+
+  const countEl = document.getElementById('fu-count')
+  if (countEl) countEl.textContent = rows.length ? (rows.length + ' shown') : ''
+
+  if (rows.length === 0) {
+    body.innerHTML = `<div class="fu-empty"><span class="em-em">🎉</span>${
+      followupFilters.scope === 'due' ? 'Nothing due right now. Switch to "All upcoming" to see future follow-ups.' : 'No upcoming follow-ups in the selected boards.'
+    }</div>`
+    return
+  }
+
+  body.innerHTML = rows.map(c => {
+    const fd = new Date(c.followup_date); fd.setHours(0,0,0,0)
+    const diff = Math.round((fd - today) / 86400000)
+    const cls = diff < 0 ? 'overdue' : (diff === 0 ? 'duetoday' : '')
+    const colLabel = COL_LABELS[c.column_id] || ''
+    const lo = c.created_by_name ? `<span class="lo-tag">· ${escHtml(c.created_by_name)}</span>` : ''
+    return `
+      <div class="fu-row ${cls}" onclick="openCard('${c.id}')">
+        <span class="fu-dot"></span>
+        <div class="fu-name">${escHtml(displayName(c))}${lo}</div>
+        <div class="fu-meta">${fuBoardBadge(c.board)}${escHtml(colLabel)}</div>
+        <div class="fu-last">${fuLastContactLabel(c)}</div>
+        <div class="fu-due">${fuRelativeDueLabel(diff)}</div>
+        <div class="fu-actions" onclick="event.stopPropagation()">
+          <button class="fu-btn" title="Log Call" onclick="fuQuickAction('${c.id}','call',this)">📞</button>
+          <button class="fu-btn" title="Log Email" onclick="fuQuickAction('${c.id}','email',this)">📧</button>
+          <button class="fu-btn" title="Log Text" onclick="fuQuickAction('${c.id}','text',this)">💬</button>
+          <button class="fu-btn" title="Add Note" onclick="fuToggleNote('${c.id}')">📝</button>
+          <span class="fu-snooze-wrap">
+            <button class="fu-btn fu-snooze" title="Snooze" onclick="fuToggleSnooze('${c.id}',this)">😴 ▾</button>
+            <div class="fu-snooze-menu" id="fu-snooze-${c.id}">
+              <button onclick="fuSnooze('${c.id}',1)">1 day</button>
+              <button onclick="fuSnooze('${c.id}',3)">3 days</button>
+              <button onclick="fuSnooze('${c.id}',7)">7 days</button>
+              <button onclick="fuSnooze('${c.id}',14)">14 days</button>
+              <button onclick="fuSnoozeCustom('${c.id}')">Custom…</button>
+            </div>
+          </span>
+        </div>
+        <div class="fu-note-row" id="fu-note-${c.id}">
+          <input type="text" placeholder="Add a note…" onkeydown="if(event.key==='Enter')fuSaveNote('${c.id}')" />
+          <button class="fu-btn" onclick="fuSaveNote('${c.id}')">Save</button>
+        </div>
+      </div>`
+  }).join('')
+}
+
+async function fuQuickAction(contactId, logType, btnEl) {
+  if (btnEl) { btnEl.disabled = true; btnEl.style.opacity = '0.5' }
+  const ok = await quickLog(contactId, logType, null, null)
+  if (ok) showToast(`Logged ${logTypeName(logType)} ✓`, 'green')
+  if (!supabase) renderFollowupsBoard() // realtime won't fire in demo mode
+  // Realtime channel fires loadContacts() → renderAllBoards() → renderFollowupsBoard()
+}
+
+function fuToggleNote(contactId) {
+  const row = document.getElementById('fu-note-' + contactId)
+  if (!row) return
+  // Close other open note rows
+  document.querySelectorAll('.fu-note-row.open').forEach(r => { if (r !== row) r.classList.remove('open') })
+  row.classList.toggle('open')
+  if (row.classList.contains('open')) row.querySelector('input')?.focus()
+}
+
+async function fuSaveNote(contactId) {
+  const input = document.querySelector('#fu-note-' + contactId + ' input')
+  if (!input) return
+  const text = input.value.trim()
+  if (!text) { showToast('Enter a note first', 'red'); return }
+  input.value = ''
+  const ok = await quickLog(contactId, 'note', text, null)
+  if (ok) showToast('Note saved ✓', 'green')
+  if (!supabase) renderFollowupsBoard()
+}
+
+function fuToggleSnooze(contactId, btnEl) {
+  const menu = document.getElementById('fu-snooze-' + contactId)
+  if (!menu) return
+  document.querySelectorAll('.fu-snooze-menu.open').forEach(m => { if (m !== menu) m.classList.remove('open') })
+  menu.classList.toggle('open')
+}
+
+async function fuSnooze(contactId, days) {
+  document.getElementById('fu-snooze-' + contactId)?.classList.remove('open')
+  const ok = await quickLog(contactId, 'ignore', null, days)
+  if (ok) showToast(`Snoozed ${days} day${days!==1?'s':''} ✓`, 'green')
+  if (!supabase) renderFollowupsBoard()
+}
+
+async function fuSnoozeCustom(contactId) {
+  document.getElementById('fu-snooze-' + contactId)?.classList.remove('open')
+  const raw = prompt('Snooze for how many business days?')
+  if (raw == null) return
+  const n = parseInt(raw, 10)
+  if (isNaN(n) || n < 1) { showToast('Enter a positive number', 'red'); return }
+  await fuSnooze(contactId, n)
+}
+
+// Click-away to close any open snooze menu
+document.addEventListener('click', function(ev) {
+  if (!ev.target.closest('.fu-snooze-wrap')) {
+    document.querySelectorAll('.fu-snooze-menu.open').forEach(m => m.classList.remove('open'))
+  }
+})
 
 // ═══════════════════════════════════════════
 //  META LEADS BOARD
@@ -2865,49 +3145,65 @@ function toggleIgnore() {
   }
 }
 
-async function saveContactLog() {
-  if (!activeContactId) return
-  const note = activeIgnore
-    ? document.getElementById('ign-note')?.value
-    : document.getElementById('contact-note')?.value
-
-  // Calculate new followup date
-  let fuDate = null
-  if (cfuMode === 'days') {
-    const days = parseInt(document.getElementById('cfu-days-val')?.value || '2')
-    fuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
+// Shared log primitive — used by saveContactLog() (modal) and quick actions on the Follow-ups page.
+// fuOverride: explicit YYYY-MM-DD date OR a number of business days from today; null/undefined = default config days.
+async function quickLog(contactId, logType, note, fuOverride) {
+  if (!contactId) return false
+  let finalFuDate
+  if (typeof fuOverride === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fuOverride)) {
+    finalFuDate = fuOverride
   } else {
-    fuDate = document.getElementById('cfu-date-val')?.value || null
+    const days = (typeof fuOverride === 'number' && !isNaN(fuOverride))
+      ? fuOverride
+      : ((loadConfig() || {}).followup_default_days || 2)
+    finalFuDate = addBizDays(new Date(), days).toISOString().split('T')[0]
   }
-  console.log('[LOG DEBUG] cfuMode:', cfuMode, '| fuDate:', fuDate, '| activeIgnore:', activeIgnore, '| activeLogType:', activeLogType)
-
-  // Auto-reset follow-up for ALL log types (including ignore)
-  let finalFuDate = fuDate
 
   const logEntry = {
-    contact_id: activeContactId,
+    contact_id: contactId,
     user_name: currentUser?.name || 'Unknown',
-    log_type: activeLogType,
-    note: note || null,
+    log_type: logType,
+    note: (note && String(note).trim()) ? String(note).trim() : null,
     timestamp: new Date().toISOString()
   }
 
   if (supabase) {
     const { error } = await supabase.from('contact_log').insert(logEntry)
-    if (error) { showToast('Error saving log', 'red'); return }
+    if (error) { showToast('Error saving log', 'red'); return false }
     await supabase.from('contacts').update({
       followup_date: finalFuDate,
       needs_response: false,
       updated_at: new Date().toISOString()
-    }).eq('id', activeContactId)
+    }).eq('id', contactId)
   } else {
-    const c = contacts.find(x=>x.id===activeContactId)
+    const c = contacts.find(x=>x.id===contactId)
     if (c) {
       if (!c.contact_log) c.contact_log = []
       c.contact_log.push(logEntry)
       c.followup_date = finalFuDate; c.needs_response = false
     }
   }
+  return true
+}
+
+async function saveContactLog() {
+  if (!activeContactId) return
+  const note = activeIgnore
+    ? document.getElementById('ign-note')?.value
+    : document.getElementById('contact-note')?.value
+
+  // Resolve follow-up override from modal: explicit date OR custom days input.
+  let fuOverride = null
+  if (cfuMode === 'days') {
+    const parsed = parseInt(document.getElementById('cfu-days-val')?.value || '2')
+    fuOverride = isNaN(parsed) ? null : parsed
+  } else {
+    fuOverride = document.getElementById('cfu-date-val')?.value || null
+  }
+  console.log('[LOG DEBUG] cfuMode:', cfuMode, '| fuOverride:', fuOverride, '| activeIgnore:', activeIgnore, '| activeLogType:', activeLogType)
+
+  const ok = await quickLog(activeContactId, activeLogType, note, fuOverride)
+  if (!ok) return
 
   closeModal('modal-contact')
   showToast('Contact logged ✓', 'green')
@@ -3733,6 +4029,7 @@ async function switchTeamView(team) {
 }
 
 const BOARD_META = {
+  followups:{ icon:'📋', label:'FOLLOW-UPS' },
   prospects:{ icon:'🏠', label:'PROSPECTS' },
   leads:{ icon:'⚡', label:'LEADS' },
   closed:{ icon:'✅', label:'CLOSED LOANS' },
@@ -3742,7 +4039,7 @@ const BOARD_META = {
 
 function goBoard(b, el) {
   currentBoard = b
-  ;['prospects','leads','closed','dead','meta'].forEach(id => {
+  ;['followups','prospects','leads','closed','dead','meta'].forEach(id => {
     const bd = document.getElementById('board-'+id)
     if (bd) { bd.classList.remove('on'); bd.style.display = 'none' }
   })
@@ -3752,6 +4049,7 @@ function goBoard(b, el) {
   if (bd) { bd.classList.add('on'); bd.style.display = 'flex' }
   const meta = BOARD_META[b]
   document.getElementById('bh-title').innerHTML = `<div class="bh-icon">${meta.icon}</div>${meta.label}`
+  if (b === 'followups') renderFollowupsBoard()
 }
 
 // ═══════════════════════════════════════════

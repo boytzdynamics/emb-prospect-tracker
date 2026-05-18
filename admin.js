@@ -552,30 +552,121 @@ async function handleCSVImport(input) {
   const text = await file.text()
   const lines = text.split('\n').filter(l=>l.trim())
   const headers = lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/"/g,''))
-  const rows = lines.slice(1).map(line => {
+  const rawRows = lines.slice(1).map(line => {
     const vals = line.split(',').map(v=>v.trim().replace(/"/g,''))
     return Object.fromEntries(headers.map((h,i)=>[h,vals[i]||'']))
   }).filter(r=>r.first_name||r.last_name||r.phone)
+
+  // O(1) pre-filter so most rows skip the Levenshtein scan when a phone hits.
+  // Indexes both phone and phone2 so we catch alternate numbers.
+  const existingByPhone = new Map()
+  contacts.forEach(c => {
+    const d1 = (c.phone||'').replace(/\D/g,'')
+    const d2 = (c.phone2||'').replace(/\D/g,'')
+    if (d1) existingByPhone.set(d1, c)
+    if (d2 && !existingByPhone.has(d2)) existingByPhone.set(d2, c)
+  })
+
+  const seenInCsv = []
+  const processed = rawRows.map((r, i) => {
+    const name = `${r.first_name||''} ${r.last_name||''}`.trim()
+    const phoneDigits = (r.phone||'').replace(/\D/g,'')
+
+    let isDup = false, reason = null, matchedContact = null, matchedRowIndex = null
+
+    if (phoneDigits && existingByPhone.has(phoneDigits)) {
+      matchedContact = existingByPhone.get(phoneDigits)
+      reason = 'Same phone number'
+      isDup = true
+    } else {
+      const matches = findDuplicates(name, r.phone, contacts)
+      if (matches.length) {
+        matchedContact = matches[0].contact
+        reason = matches.length > 1
+          ? `${matches[0].reason} (+${matches.length-1} more)`
+          : matches[0].reason
+        isDup = true
+      }
+    }
+
+    if (!isDup && seenInCsv.length) {
+      const intra = findDuplicates(name, r.phone, seenInCsv)
+      if (intra.length) {
+        matchedRowIndex = intra[0].contact._csvIndex
+        reason = `Duplicate within CSV (row ${matchedRowIndex+1})`
+        isDup = true
+      }
+    }
+
+    seenInCsv.push({
+      _csvIndex: i,
+      first_name: r.first_name||'',
+      last_name: r.last_name||'',
+      phone: r.phone||''
+    })
+
+    return { index: i, row: r, isDup, reason, matchedContact, matchedRowIndex, forceImport: false }
+  })
+
+  window._csvImportRows = processed
+  renderCsvPreview(processed)
+}
+
+function renderCsvPreview(processed) {
   const preview = document.getElementById('csv-preview')
   const previewContent = document.getElementById('csv-preview-content')
-  if(preview) preview.style.display='block'
-  if(previewContent) previewContent.innerHTML = `
+  if (preview) preview.style.display = 'block'
+  if (!previewContent) return
+
+  const dupCount = processed.filter(p => p.isDup).length
+  const total = processed.length
+
+  previewContent.innerHTML = `
     <div style="background:var(--off);border-radius:9px;padding:12px;font-size:12px;font-weight:700;color:var(--dark)">
-      Found <strong>${rows.length} contacts</strong> to import
-      <div style="margin-top:8px;color:#888;font-size:11px">
-        ${rows.slice(0,3).map(r=>`${r.first_name||''} ${r.last_name||''} · ${r.phone||''}`).join('<br>')}
-        ${rows.length>3?`<br>...and ${rows.length-3} more`:''}
-      </div>
+      Found <strong>${total} contacts</strong> to import${dupCount ? ` · <span style="color:#c0392b">${dupCount} possible duplicate${dupCount===1?'':'s'}</span>` : ''}
+    </div>
+    <div id="csv-row-list" style="max-height:300px;overflow-y:auto;margin-top:8px;border:1px solid #e0e4e6;border-radius:8px">
+      ${processed.map(p => renderCsvRow(p)).join('')}
+    </div>
+    ${dupCount ? `<div style="font-size:11px;color:#888;margin-top:6px">Tick "Import anyway" on any duplicate you still want to import.</div>` : ''}
+  `
+
+  previewContent.querySelectorAll('input[data-csv-force]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.csvForce, 10)
+      if (window._csvImportRows[idx]) window._csvImportRows[idx].forceImport = e.target.checked
+    })
+  })
+}
+
+function renderCsvRow(p) {
+  const name = `${p.row.first_name||''} ${p.row.last_name||''}`.trim() || '(no name)'
+  const phone = p.row.phone || '(no phone)'
+  if (!p.isDup) {
+    return `<div style="padding:7px 10px;border-bottom:1px solid #f0f3f4;font-size:11px;display:flex;justify-content:space-between">
+      <span>${escHtml(name)}</span><span style="color:#888">${escHtml(phone)}</span>
     </div>`
-  window._csvImportRows = rows
+  }
+  const matchLabel = p.matchedContact
+    ? `${escHtml(p.matchedContact.first_name||'')} ${escHtml(p.matchedContact.last_name||'')}${p.matchedContact.column_id ? ' · '+(COL_LABELS[p.matchedContact.column_id]||'') : ''}`
+    : `row ${(p.matchedRowIndex||0)+1}`
+  return `<div style="padding:7px 10px;border-bottom:1px solid #f0f3f4;font-size:11px;background:#fff5f0">
+    <div style="display:flex;justify-content:space-between"><strong>${escHtml(name)}</strong><span style="color:#888">${escHtml(phone)}</span></div>
+    <div style="color:#c0392b;font-size:10px;margin-top:3px">⚠ ${escHtml(p.reason||'')} — matches ${matchLabel}</div>
+    <label style="display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#555;margin-top:4px;cursor:pointer">
+      <input type="checkbox" data-csv-force="${p.index}"> Import anyway
+    </label>
+  </div>`
 }
 
 async function confirmCSVImport() {
-  const rows = window._csvImportRows || []
+  const processed = window._csvImportRows || []
   const colId = document.getElementById('csv-column')?.value || 'col_gen1'
   const cfg = loadConfig()||{}
-  let imported = 0
-  for(const row of rows) {
+  let imported = 0, skipped = 0
+  for(const p of processed) {
+    if (p.isDup && !p.forceImport) { skipped++; continue }
+    const row = p.row
     const contact = {
       id: 'csv-'+Date.now()+'-'+Math.random().toString(36).substr(2,5),
       first_name: row.first_name||'', last_name: row.last_name||'',
@@ -592,7 +683,10 @@ async function confirmCSVImport() {
   }
   renderAllBoards()
   closeModal('modal-admin')
-  showToast(`${imported} contacts imported ✓`, 'green')
+  const msg = skipped > 0
+    ? `${imported} imported · ${skipped} duplicate${skipped===1?'':'s'} skipped`
+    : `${imported} contacts imported ✓`
+  showToast(msg, 'green')
 }
 
 function exportSettings() {

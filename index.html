@@ -4829,17 +4829,20 @@ ${input.content}` }]
 // ═══════════════════════════════════════════
 //  DUPLICATE DETECTION
 // ═══════════════════════════════════════════
-function checkDuplicates(name, phone) {
+// Pure: returns [{contact, reason}] without touching the DOM.
+// `pool` defaults to the global contacts array; callers can pass a contact-shaped
+// array (e.g., rows already seen earlier in a CSV upload) to reuse the same rule.
+function findDuplicates(name, phone, pool) {
   const matches = []
+  const list = pool || contacts
+  const inputName = (name||'').trim().toLowerCase()
+  const inputPhone = (phone||'').replace(/\D/g,'')
 
-  contacts.forEach(c => {
+  list.forEach(c => {
     const cName = `${c.first_name||''} ${c.last_name||''}`.trim().toLowerCase()
     const cPhone = (c.phone||'').replace(/\D/g,'')
     const cPhone2 = (c.phone2||'').replace(/\D/g,'')
-    const inputName = (name||'').toLowerCase()
-    const inputPhone = (phone||'').replace(/\D/g,'')
 
-    // Match on phone or phone2 (strong match) or name similarity (fuzzy)
     const phoneMatch = inputPhone && (
       (cPhone && inputPhone === cPhone) || (cPhone2 && inputPhone === cPhone2)
     )
@@ -4853,12 +4856,19 @@ function checkDuplicates(name, phone) {
     }
   })
 
+  return matches
+}
+
+function checkDuplicates(name, phone) {
+  const matches = findDuplicates(name, phone)
+
   const warn = document.getElementById('dup-warning')
   const list = document.getElementById('dup-list')
-  
+  if (!warn || !list) return matches
+
   if (matches.length === 0) {
     warn.classList.remove('show')
-    return
+    return matches
   }
 
   list.innerHTML = matches.slice(0,3).map(m => `
@@ -4866,8 +4876,9 @@ function checkDuplicates(name, phone) {
       <div class="dup-name">${escHtml(m.contact.first_name||'')} ${escHtml(m.contact.last_name||'')}</div>
       <div class="dup-detail">${m.reason} · ${escHtml(m.contact.phone||'')} · ${COL_LABELS[m.contact.column_id]||''}</div>
     </div>`).join('')
-  
+
   warn.classList.add('show')
+  return matches
 }
 
 // Also check on name/phone input blur

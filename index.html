@@ -4829,6 +4829,13 @@ ${input.content}` }]
 // ═══════════════════════════════════════════
 //  DUPLICATE DETECTION
 // ═══════════════════════════════════════════
+// Normalize a phone string to a comparable key. Strips formatting,
+// and trims a leading US country code so "+15551234567" matches "5551234567".
+function normalizePhoneKey(p) {
+  const d = (p||'').replace(/\D/g,'')
+  return (d.length === 11 && d.startsWith('1')) ? d.slice(1) : d
+}
+
 // Pure: returns [{contact, reason}] without touching the DOM.
 // `pool` defaults to the global contacts array; callers can pass a contact-shaped
 // array (e.g., rows already seen earlier in a CSV upload) to reuse the same rule.
@@ -4836,12 +4843,12 @@ function findDuplicates(name, phone, pool) {
   const matches = []
   const list = pool || contacts
   const inputName = (name||'').trim().toLowerCase()
-  const inputPhone = (phone||'').replace(/\D/g,'')
+  const inputPhone = normalizePhoneKey(phone)
 
   list.forEach(c => {
     const cName = `${c.first_name||''} ${c.last_name||''}`.trim().toLowerCase()
-    const cPhone = (c.phone||'').replace(/\D/g,'')
-    const cPhone2 = (c.phone2||'').replace(/\D/g,'')
+    const cPhone = normalizePhoneKey(c.phone)
+    const cPhone2 = normalizePhoneKey(c.phone2)
 
     const phoneMatch = inputPhone && (
       (cPhone && inputPhone === cPhone) || (cPhone2 && inputPhone === cPhone2)

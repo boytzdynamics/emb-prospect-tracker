@@ -126,16 +126,23 @@ function renderAdminPanel() {
       <!-- 6: Import -->
       <div id="apanel-6" style="padding:20px;display:none">
         <div style="font-size:10px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">CSV MASS IMPORT</div>
+        <label for="csv-meta-mode" style="display:flex;align-items:flex-start;gap:10px;background:#eef5fc;border:1.5px solid var(--blue);border-radius:9px;padding:12px;margin-bottom:14px;cursor:pointer">
+          <input type="checkbox" id="csv-meta-mode" onchange="toggleCsvMetaMode()" style="width:16px;height:16px;accent-color:var(--blue);margin-top:2px" />
+          <div style="font-size:12px;color:var(--dark);line-height:1.5">
+            <strong>📱 This is a Meta lead list</strong><br>
+            <span style="color:#666;font-size:11px">Accepts Meta lead-ads headers (full_name, phone_number, email, ad_name). Matched existing contacts get moved to the Meta board and have missing fields filled in. Unmatched rows are shown for confirmation.</span>
+          </div>
+        </label>
         <div style="background:var(--off);border:2px dashed #dde2e4;border-radius:12px;padding:24px;text-align:center;margin-bottom:14px">
           <div style="font-size:32px;margin-bottom:8px">📄</div>
           <div style="font-size:13px;font-weight:700;color:var(--dark);margin-bottom:4px">Drop CSV file here or click to browse</div>
-          <div style="font-size:11px;color:#888">Required: first_name, last_name, phone · Optional: email, source, notes</div>
+          <div id="csv-required-hint" style="font-size:11px;color:#888">Required: first_name, last_name, phone · Optional: email, source, notes</div>
           <input type="file" id="csv-import" accept=".csv" style="display:none" onchange="handleCSVImport(this)" />
           <button class="btn-p" onclick="document.getElementById('csv-import').click()" style="margin-top:12px">Browse Files</button>
         </div>
         <div id="csv-preview" style="display:none">
           <div id="csv-preview-content"></div>
-          <div class="frow" style="margin-top:10px">
+          <div class="frow" id="csv-column-row" style="margin-top:10px">
             <div class="ff"><label>Import to Column</label>
               <select id="csv-column">
                 <option value="col_gen1">🏠 Prospects</option>
@@ -546,36 +553,74 @@ function copyWebhook() {
   showToast('Webhook URL copied', 'blue')
 }
 
+// Toggle Meta-mode UI hints + force the column selector to Meta when on.
+function toggleCsvMetaMode() {
+  const cb = document.getElementById('csv-meta-mode')
+  const hint = document.getElementById('csv-required-hint')
+  const colRow = document.getElementById('csv-column-row')
+  const colSel = document.getElementById('csv-column')
+  if (!cb) return
+  if (cb.checked) {
+    if (hint) hint.innerHTML = 'Meta lead-ads format: <strong>full_name, email, phone_number</strong> (ad_name optional)'
+    if (colSel) colSel.value = 'col_meta'
+    if (colRow) colRow.style.display = 'none'
+  } else {
+    if (hint) hint.innerHTML = 'Required: first_name, last_name, phone · Optional: email, source, notes'
+    if (colRow) colRow.style.display = ''
+  }
+}
+
+// Header aliases applied only when Meta mode is on.
+function _aliasMetaHeaders(row) {
+  // full_name -> first_name + last_name (split on first space)
+  if (!row.first_name && !row.last_name && row.full_name) {
+    const parts = String(row.full_name).trim().split(/\s+/)
+    row.first_name = parts[0] || ''
+    row.last_name = parts.slice(1).join(' ') || ''
+  }
+  // phone_number -> phone
+  if (!row.phone && row.phone_number) row.phone = row.phone_number
+  // build source: "Meta" or "Meta / <ad_name>"
+  const adName = row.ad_name || row.adset_name || row.campaign_name || ''
+  if (!row.source) row.source = adName ? `Meta / ${adName}` : 'Meta'
+  return row
+}
+
 async function handleCSVImport(input) {
   if(!input.files?.length) return
   const file = input.files[0]
   const text = await file.text()
   const lines = text.split('\n').filter(l=>l.trim())
   const headers = lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/"/g,''))
-  const rawRows = lines.slice(1).map(line => {
+  const metaMode = !!document.getElementById('csv-meta-mode')?.checked
+  window._csvMetaMode = metaMode
+
+  let rawRows = lines.slice(1).map(line => {
     const vals = line.split(',').map(v=>v.trim().replace(/"/g,''))
     return Object.fromEntries(headers.map((h,i)=>[h,vals[i]||'']))
-  }).filter(r=>r.first_name||r.last_name||r.phone)
+  })
+  if (metaMode) rawRows = rawRows.map(_aliasMetaHeaders)
+  rawRows = rawRows.filter(r=>r.first_name||r.last_name||r.phone)
 
   // O(1) pre-filter so most rows skip the Levenshtein scan when a phone hits.
-  // Indexes both phone and phone2 so we catch alternate numbers.
+  // Uses normalizePhoneKey so "+1XXXXXXXXXX" (Meta) matches "XXXXXXXXXX" (EMB).
   const existingByPhone = new Map()
   contacts.forEach(c => {
-    const d1 = (c.phone||'').replace(/\D/g,'')
-    const d2 = (c.phone2||'').replace(/\D/g,'')
-    if (d1) existingByPhone.set(d1, c)
-    if (d2 && !existingByPhone.has(d2)) existingByPhone.set(d2, c)
+    const k1 = normalizePhoneKey(c.phone)
+    const k2 = normalizePhoneKey(c.phone2)
+    if (k1) existingByPhone.set(k1, c)
+    if (k2 && !existingByPhone.has(k2)) existingByPhone.set(k2, c)
   })
 
   const seenInCsv = []
   const processed = rawRows.map((r, i) => {
     const name = `${r.first_name||''} ${r.last_name||''}`.trim()
-    const phoneDigits = (r.phone||'').replace(/\D/g,'')
+    const phoneKey = normalizePhoneKey(r.phone)
 
     let isDup = false, reason = null, matchedContact = null, matchedRowIndex = null
 
-    if (phoneDigits && existingByPhone.has(phoneDigits)) {
-      matchedContact = existingByPhone.get(phoneDigits)
+    if (phoneKey && existingByPhone.has(phoneKey)) {
+      matchedContact = existingByPhone.get(phoneKey)
       reason = 'Same phone number'
       isDup = true
     } else {
@@ -605,7 +650,24 @@ async function handleCSVImport(input) {
       phone: r.phone||''
     })
 
-    return { index: i, row: r, isDup, reason, matchedContact, matchedRowIndex, forceImport: false }
+    // Decide what to DO with this row at confirm time.
+    //  meta + matched         -> update_move (auto-apply, no checkbox needed)
+    //  meta + unmatched       -> create_meta (default-OFF checkbox, manual confirm)
+    //  normal + matched-to-existing -> skip_dup (existing dup-detection UX, override via checkbox)
+    //  normal + intra-csv dup -> skip_dup
+    //  normal + unmatched     -> create_default (auto-import, no checkbox)
+    let action
+    if (metaMode && isDup && matchedContact) action = 'update_move'
+    else if (metaMode && !isDup)             action = 'create_meta'
+    else if (!metaMode && isDup)             action = 'skip_dup'
+    else                                     action = 'create_default'
+
+    // forceImport semantics differ by action:
+    //   skip_dup     -> false = skip, true = import anyway (user override)
+    //   create_meta  -> false = skip, true = create new contact (user must confirm)
+    //   update_move  -> ignored (always applies)
+    //   create_default -> ignored (always applies)
+    return { index: i, row: r, isDup, reason, matchedContact, matchedRowIndex, action, forceImport: false }
   })
 
   window._csvImportRows = processed
@@ -618,17 +680,34 @@ function renderCsvPreview(processed) {
   if (preview) preview.style.display = 'block'
   if (!previewContent) return
 
-  const dupCount = processed.filter(p => p.isDup).length
+  const metaMode = !!window._csvMetaMode
   const total = processed.length
+  const matchedCount = processed.filter(p => p.action === 'update_move').length
+  const newMetaCount = processed.filter(p => p.action === 'create_meta').length
+  const dupCount     = processed.filter(p => p.action === 'skip_dup').length
+
+  let headerLine
+  if (metaMode) {
+    headerLine = `Found <strong>${total} Meta leads</strong> · <span style="color:var(--blue)">${matchedCount} will move to Meta + fill missing info</span> · <span style="color:#888">${newMetaCount} new (tick to import)</span>`
+  } else {
+    headerLine = `Found <strong>${total} contacts</strong> to import${dupCount ? ` · <span style="color:#c0392b">${dupCount} possible duplicate${dupCount===1?'':'s'}</span>` : ''}`
+  }
+
+  let helperLine = ''
+  if (metaMode && newMetaCount > 0) {
+    helperLine = `<div style="font-size:11px;color:#888;margin-top:6px">Tick "Import to Meta" on any new lead you want to add.</div>`
+  } else if (!metaMode && dupCount > 0) {
+    helperLine = `<div style="font-size:11px;color:#888;margin-top:6px">Tick "Import anyway" on any duplicate you still want to import.</div>`
+  }
 
   previewContent.innerHTML = `
-    <div style="background:var(--off);border-radius:9px;padding:12px;font-size:12px;font-weight:700;color:var(--dark)">
-      Found <strong>${total} contacts</strong> to import${dupCount ? ` · <span style="color:#c0392b">${dupCount} possible duplicate${dupCount===1?'':'s'}</span>` : ''}
+    <div style="background:var(--off);border-radius:9px;padding:12px;font-size:12px;font-weight:700;color:var(--dark);line-height:1.6">
+      ${headerLine}
     </div>
     <div id="csv-row-list" style="max-height:300px;overflow-y:auto;margin-top:8px;border:1px solid #e0e4e6;border-radius:8px">
       ${processed.map(p => renderCsvRow(p)).join('')}
     </div>
-    ${dupCount ? `<div style="font-size:11px;color:#888;margin-top:6px">Tick "Import anyway" on any duplicate you still want to import.</div>` : ''}
+    ${helperLine}
   `
 
   previewContent.querySelectorAll('input[data-csv-force]').forEach(cb => {
@@ -642,31 +721,112 @@ function renderCsvPreview(processed) {
 function renderCsvRow(p) {
   const name = `${p.row.first_name||''} ${p.row.last_name||''}`.trim() || '(no name)'
   const phone = p.row.phone || '(no phone)'
-  if (!p.isDup) {
-    return `<div style="padding:7px 10px;border-bottom:1px solid #f0f3f4;font-size:11px;display:flex;justify-content:space-between">
-      <span>${escHtml(name)}</span><span style="color:#888">${escHtml(phone)}</span>
-    </div>`
-  }
-  const matchLabel = p.matchedContact
+  const matchedLabel = p.matchedContact
     ? `${escHtml(p.matchedContact.first_name||'')} ${escHtml(p.matchedContact.last_name||'')}${p.matchedContact.column_id ? ' · '+(COL_LABELS[p.matchedContact.column_id]||'') : ''}`
     : `row ${(p.matchedRowIndex||0)+1}`
-  return `<div style="padding:7px 10px;border-bottom:1px solid #f0f3f4;font-size:11px;background:#fff5f0">
-    <div style="display:flex;justify-content:space-between"><strong>${escHtml(name)}</strong><span style="color:#888">${escHtml(phone)}</span></div>
-    <div style="color:#c0392b;font-size:10px;margin-top:3px">⚠ ${escHtml(p.reason||'')} — matches ${matchLabel}</div>
-    <label style="display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#555;margin-top:4px;cursor:pointer">
-      <input type="checkbox" data-csv-force="${p.index}"> Import anyway
-    </label>
+
+  // Meta-mode: matched -> auto move + fill blanks (no checkbox, blue accent).
+  if (p.action === 'update_move') {
+    return `<div style="padding:7px 10px;border-bottom:1px solid #f0f3f4;font-size:11px;background:#eef5fc">
+      <div style="display:flex;justify-content:space-between"><strong>${escHtml(name)}</strong><span style="color:#888">${escHtml(phone)}</span></div>
+      <div style="color:var(--blue);font-size:10px;margin-top:3px">→ Move to Meta board + fill missing info — matches ${matchedLabel}</div>
+    </div>`
+  }
+
+  // Meta-mode: unmatched -> "Import to Meta" checkbox, default OFF.
+  if (p.action === 'create_meta') {
+    return `<div style="padding:7px 10px;border-bottom:1px solid #f0f3f4;font-size:11px">
+      <div style="display:flex;justify-content:space-between"><span>${escHtml(name)}</span><span style="color:#888">${escHtml(phone)}</span></div>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#555;margin-top:4px;cursor:pointer">
+        <input type="checkbox" data-csv-force="${p.index}"> Import to Meta board
+      </label>
+    </div>`
+  }
+
+  // Normal-mode dup (existing behavior).
+  if (p.action === 'skip_dup') {
+    return `<div style="padding:7px 10px;border-bottom:1px solid #f0f3f4;font-size:11px;background:#fff5f0">
+      <div style="display:flex;justify-content:space-between"><strong>${escHtml(name)}</strong><span style="color:#888">${escHtml(phone)}</span></div>
+      <div style="color:#c0392b;font-size:10px;margin-top:3px">⚠ ${escHtml(p.reason||'')} — matches ${matchedLabel}</div>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#555;margin-top:4px;cursor:pointer">
+        <input type="checkbox" data-csv-force="${p.index}"> Import anyway
+      </label>
+    </div>`
+  }
+
+  // Default: normal-mode unmatched -> plain row, auto-import on confirm.
+  return `<div style="padding:7px 10px;border-bottom:1px solid #f0f3f4;font-size:11px;display:flex;justify-content:space-between">
+    <span>${escHtml(name)}</span><span style="color:#888">${escHtml(phone)}</span>
   </div>`
+}
+
+// Merge CSV row data into an existing contact, filling ONLY blank fields.
+// Returns the patch object (only the keys that actually changed), or null if nothing to update beyond column move.
+function _buildMetaUpdatePatch(existing, row) {
+  const patch = {}
+  // Always move to Meta + refresh timestamp.
+  if (existing.column_id !== 'col_meta') patch.column_id = 'col_meta'
+  patch.updated_at = new Date().toISOString()
+
+  // Fill blank fields only.
+  const fillIfBlank = (field, value) => {
+    if (!value) return
+    const cur = existing[field]
+    if (cur === null || cur === undefined || String(cur).trim() === '') patch[field] = value
+  }
+  fillIfBlank('first_name', row.first_name)
+  fillIfBlank('last_name',  row.last_name)
+  fillIfBlank('email',      row.email)
+  fillIfBlank('source',     row.source)
+
+  // Phone handling: if existing phone is empty, fill it. If existing phone is set
+  // but DIFFERENT from CSV phone (by normalized key), save the CSV phone as phone2
+  // (only if phone2 is empty — never overwrite an existing alternate).
+  const csvPhone = row.phone || ''
+  if (csvPhone) {
+    const csvKey = normalizePhoneKey(csvPhone)
+    const existingKey = normalizePhoneKey(existing.phone)
+    const existingKey2 = normalizePhoneKey(existing.phone2)
+    if (!existingKey) {
+      patch.phone = csvPhone
+    } else if (csvKey !== existingKey && csvKey !== existingKey2 && !existingKey2) {
+      patch.phone2 = csvPhone
+    }
+  }
+  return patch
 }
 
 async function confirmCSVImport() {
   const processed = window._csvImportRows || []
-  const colId = document.getElementById('csv-column')?.value || 'col_gen1'
   const cfg = loadConfig()||{}
-  let imported = 0, skipped = 0
-  for(const p of processed) {
-    if (p.isDup && !p.forceImport) { skipped++; continue }
+  const metaMode = !!window._csvMetaMode
+  const selectedColId = document.getElementById('csv-column')?.value || 'col_gen1'
+
+  let moved = 0, created = 0, skipped = 0
+
+  for (const p of processed) {
     const row = p.row
+
+    // --- Action: move existing contact to Meta + fill blanks ---
+    if (p.action === 'update_move' && p.matchedContact) {
+      const patch = _buildMetaUpdatePatch(p.matchedContact, row)
+      // Apply to in-memory contact.
+      Object.assign(p.matchedContact, patch)
+      if (supabase) {
+        try { await supabase.from('contacts').update(patch).eq('id', p.matchedContact.id) } catch(e){}
+      }
+      moved++
+      continue
+    }
+
+    // --- Action: skip duplicate (normal mode) unless user ticked "Import anyway" ---
+    if (p.action === 'skip_dup' && !p.forceImport) { skipped++; continue }
+
+    // --- Action: create Meta lead (only if user ticked the row) ---
+    if (p.action === 'create_meta' && !p.forceImport) { skipped++; continue }
+
+    // --- All remaining cases insert a new contact ---
+    const colId = (p.action === 'create_meta') ? 'col_meta' : selectedColId
     const contact = {
       id: 'csv-'+Date.now()+'-'+Math.random().toString(36).substr(2,5),
       first_name: row.first_name||'', last_name: row.last_name||'',
@@ -679,13 +839,24 @@ async function confirmCSVImport() {
     }
     contacts.unshift(contact)
     if(supabase) { try { await supabase.from('contacts').insert(contact) } catch(e){} }
-    imported++
+    created++
   }
+
   renderAllBoards()
   closeModal('modal-admin')
-  const msg = skipped > 0
-    ? `${imported} imported · ${skipped} duplicate${skipped===1?'':'s'} skipped`
-    : `${imported} contacts imported ✓`
+
+  let msg
+  if (metaMode) {
+    const parts = []
+    if (moved)   parts.push(`${moved} moved to Meta`)
+    if (created) parts.push(`${created} new`)
+    if (skipped) parts.push(`${skipped} skipped`)
+    msg = parts.join(' · ') || 'Nothing to import'
+  } else {
+    msg = skipped > 0
+      ? `${created} imported · ${skipped} duplicate${skipped===1?'':'s'} skipped`
+      : `${created} contacts imported ✓`
+  }
   showToast(msg, 'green')
 }
 

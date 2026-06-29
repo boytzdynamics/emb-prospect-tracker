@@ -1,6 +1,6 @@
 {
   "name": "emb-prospect-tracker",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "Eugene Mortgage Brokers Prospect Tracker",
   "main": "main.js",
   "scripts": {

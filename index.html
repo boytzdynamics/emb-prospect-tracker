@@ -4270,7 +4270,7 @@ async function aiDraftEmail(contactId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.claude_api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 500,
+        model: 'claude-sonnet-4-6', max_tokens: 500,
         messages: [{ role: 'user', content: `Draft a professional, warm, brief email for a mortgage broker. Contact: ${c.first_name} ${c.last_name}. Loan: ${c.loan_type}. Subject: ${subject}. Notes: ${notes}. Sign off naturally as ${currentUser?.name||'Matt'} from ${c.office==='emb'?'Eugene Mortgage Brokers':'Bend Mortgage Brokers'}.` }]
       })
     })
@@ -4746,7 +4746,7 @@ ${input.content}` }]
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 500,
         system: systemPrompt,
         messages
